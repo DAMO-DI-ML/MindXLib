@@ -11,7 +11,7 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator
 
-class SubmodularRuleSet(BaseEstimator):
+class RuleSetImb(BaseEstimator):
     def __init__(
         self, max_num_rules: int=16, time_limit=60, factor_g = 0.0,
         local_search_iter = 0, beta_pos=1.0, beta_neg=1.0, 
@@ -81,15 +81,3 @@ class SubmodularRuleSet(BaseEstimator):
             for itemset in self.itemsets
         ]
         return np.greater(np.sum(predictions, axis=0), 0).astype(int)
-    
-    def overlap_on(self, X: np.ndarray):
-        if len(self.itemsets) == 0:
-            return 0
-        predictions = [
-            np.prod(X[..., itemset], axis=-1)
-            for itemset in self.itemsets
-        ]
-        sump = np.sum(predictions, axis=0)
-        pred = np.greater(sump, 0).astype(int)
-        return np.sum(sump - pred).item() / X.shape[0]
-
