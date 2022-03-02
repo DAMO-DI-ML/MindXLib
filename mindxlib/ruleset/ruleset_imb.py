@@ -8,8 +8,10 @@ import subprocess as sp
 
 import numpy as np
 import pandas as pd
+import re
 
 from sklearn.base import BaseEstimator
+
 
 class RuleSetImb(BaseEstimator):
     def __init__(
@@ -34,11 +36,14 @@ class RuleSetImb(BaseEstimator):
         self.allowrandom = allowrandom
         self.verbose = verbose
 
-    def fit(self, X: np.ndarray, y: np.ndarray):
-        data = np.concatenate((X, y[..., np.newaxis]), axis=-1)
-        columns = ['f' + str(i) for i in range(X.shape[-1])]
-        columns.append('label')
-        df = pd.DataFrame(data, columns=columns)
+    def fit(self, X, y):
+        if type(X) == np.ndarray:
+            data = np.concatenate((X, y[..., np.newaxis]), axis=-1)
+            columns = ['f' + str(i) for i in range(X.shape[-1])]
+            columns.append('label')
+            df = pd.DataFrame(data, columns=columns)
+        else:
+            df = pd.concat([X, y], axis=1)
 
         with tempfile.TemporaryFile(mode = "w+") as tmp:
             df.to_csv(tmp, index=False)
@@ -46,11 +51,11 @@ class RuleSetImb(BaseEstimator):
             tmp.seek(0)
             stderr = sys.stderr.fileno() if self.verbose else sp.DEVNULL
             proc = sp.run([
-                './ruleset/bash/f1rule',
+                'f1rule',
                 '-p', str(self.parallelism),
                 '-d', '-',
                 '-l', 'label',
-                '-o', 'i',
+                '-o', 'h',
                 '-k', str(self.max_num_rules),
                 '-fac', str(self.factor_g),
                 '-iter', str(self.local_search_iter),
@@ -66,15 +71,22 @@ class RuleSetImb(BaseEstimator):
             ], stdin=tmp, stdout=sp.PIPE, stderr=stderr, check=True)
             lines = proc.stdout.decode("utf-8").splitlines()
 
-        self.objval = float(lines[-1])
-        self.itemsets = [
-            [int(field) for field in line.split(' ')]
-            if line.strip() != '' else []
-            for line in lines[:-1]
-        ]
+        self.itemsets = []
+        self.rules = []
+
+        for line in lines[:-1]:
+            ret = line.split(" <=> ")
+
+            items = re.findall(r'\[(.*?)\]', ret[0])[0]
+            if items.strip() != '':
+                self.itemsets.append([int(field) for field in items.split(' ')])
+            else:
+                self.itemsets.append([])
+
+            self.rules.append(ret[1])
 
     def predict(self, X: np.ndarray):
-        if len(self.itemsets) == 0:
+        if len(self.rules) == 0:
             return np.zeros(X.shape[0], dtype=int)
         predictions = [
             np.prod(X[..., itemset], axis=-1)

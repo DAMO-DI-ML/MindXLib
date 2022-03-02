@@ -3,22 +3,15 @@
 import argparse
 from sklearn.metrics import accuracy_score, f1_score
 
-from mindxlib.utils import DatasetLoader, FeatureBinarizer
+from mindxlib.utils.datautil import DatasetLoader
+from mindxlib.utils.features import FeatureBinarizer
 from mindxlib.ruleset.ruleset_imb import RuleSetImb
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-dataset', dest='dataset', type=str, nargs='+', help='Datset name.')
-parser.add_argument('-mxnum', dest='mxnum', type=int, nargs='+', help='Max number of rules.')
-parser.add_argument('-lamda', dest='lamda', type=float, nargs='+', help='Lambda added for MM initialization.')
-parser.add_argument('-v', dest='verbose', action='store_true', help='Verbose.')
-args = parser.parse_args()
 
 def train(X, y):
     clf = RuleSetImb(
-        max_num_rules=args.mxnum,
-        factor_g=args.lamda,
-        warmcache=0, bestsubset=4,
-        verbose=args.verbose
+        max_num_rules=8,
+        factor_g=0.
     )
     clf.fit(X, y)
 
@@ -28,13 +21,13 @@ def test(model, X, y):
     y_hat = model.predict(X)
     f1score = f1_score(y, y_hat)
     acc = accuracy_score(y, y_hat)
-    itemsets = model.best_estimator_.itemsets
+    rules = model.rules
 
-    return f1score, acc, itemsets
+    return f1score, acc, rules
 
 def main():
-    for name in args.dataset:
-        df = DatasetLoader(name).dataframe
+    for name in ['tic-tac-toe']:
+        df = DatasetLoader(name, basedir='demo/datasets').dataframe
 
         # Separate target variable
         y = df.pop('label')
@@ -44,15 +37,13 @@ def main():
         df = binarizer.fit_transform(df)
         df.columns = [' '.join(col).strip() for col in df.columns.values]
 
-        X, y = df.to_numpy(), y.to_numpy()
-
-        model = train(X, y)
-        acc, f1score, itemsets = test(model, X, y)
+        model = train(df, y)
+        acc, f1score, rules = test(model, df.to_numpy(), y.to_numpy())
 
         print("acc = {}, f1score = {}".format(acc, f1score))
         print()
         print("Rules:")
-        print(itemsets)
+        print(rules)
 
 if __name__ == '__main__':
     main()
