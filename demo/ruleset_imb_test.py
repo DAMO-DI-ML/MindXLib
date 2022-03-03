@@ -2,8 +2,8 @@
 
 from sklearn.metrics import accuracy_score, f1_score
 
-from mindxlib import *
-from mindxlib.ruleset.ruleset_imb import RuleSetImb
+from mindxlib import utils
+from mindxlib.ruleset import RuleSetImb
 
 
 def train(X, y):

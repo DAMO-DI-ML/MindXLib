@@ -2,6 +2,7 @@
 Rule set model for classifying imbalanced data.
 """
 
+import os
 import sys
 import tempfile
 import subprocess as sp
@@ -12,6 +13,8 @@ import re
 
 from sklearn.base import BaseEstimator
 
+
+binpath = os.path.dirname(os.path.abspath(__file__)) + '/bin/f1rule'
 
 class RuleSetImb(BaseEstimator):
     def __init__(
@@ -51,7 +54,7 @@ class RuleSetImb(BaseEstimator):
             tmp.seek(0)
             stderr = sys.stderr.fileno() if self.verbose else sp.DEVNULL
             proc = sp.run([
-                'f1rule',
+                binpath,
                 '-p', str(self.parallelism),
                 '-d', '-',
                 '-l', 'label',
