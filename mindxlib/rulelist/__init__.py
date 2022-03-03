@@ -2,4 +2,4 @@
 Rule list module.
 """
 
-__all__ = ['rulelist_SSRL']
+__all__ = ['ruleList_SSRL']
