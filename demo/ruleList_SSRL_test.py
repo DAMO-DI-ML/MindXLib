@@ -1,6 +1,8 @@
+import numpy as np
 from mindxlib.rulelist.ruleList_SSRL import SSRL
-from mindxlib.utils import features
 from mindxlib.utils.datautil import DatasetLoader
+from mindxlib.utils.features import FeatureBinarizer
+
 para_dict = {
     'tic-tac-toe':{'lambda_1':1,'cc':10,'distorted_step':10}
 }
