@@ -2,8 +2,7 @@
 
 from sklearn.metrics import accuracy_score, f1_score
 
-from mindxlib.utils.datautil import DatasetLoader
-from mindxlib.utils.features import FeatureBinarizer
+from mindxlib import *
 from mindxlib.ruleset.ruleset_imb import RuleSetImb
 
 
@@ -26,13 +25,13 @@ def test(model, X, y):
 
 def main():
     for name in ['tic-tac-toe']:
-        df = DatasetLoader(name, basedir='demo/datasets').dataframe
+        df = utils.DatasetLoader(name, basedir='demo/datasets').dataframe
 
         # Separate target variable
         y = df.pop('label')
 
         # Binarize the features
-        binarizer = FeatureBinarizer(numThresh=9, negations=True, threshStr=True)
+        binarizer = utils.FeatureBinarizer(numThresh=9, negations=True, threshStr=True)
         df = binarizer.fit_transform(df)
         df.columns = [' '.join(col).strip() for col in df.columns.values]
 
