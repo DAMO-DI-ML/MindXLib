@@ -1,8 +1,6 @@
 .DS_Store
+.idea
 mindxlib/__pycache__/
 mindxlib/ruleset/__pycache__/
 mindxlib/utils/__pycache__/
-.idea
 mindxlib/pre_mining/__pycache__/
-mindxlib/__init__.py
-

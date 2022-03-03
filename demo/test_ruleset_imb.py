@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import argparse
 from sklearn.metrics import accuracy_score, f1_score
 
 from mindxlib.utils.datautil import DatasetLoader
