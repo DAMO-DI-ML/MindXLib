@@ -2,7 +2,7 @@ from mindxlib.rulelist.ruleList_SSRL import SSRL
 from mindxlib.utils import features
 from mindxlib.utils.datautil import DatasetLoader
 para_dict = {
-    'FICO-binary':{'lambda_1':5,'cc':10,'distorted_step'=10},
+    'FICO-binary':{'lambda_1':5,'cc':10,'distorted_step':10},
 }
 for name, para_v in para_dict.items():
     print('Conduct experments on dataset '+name)
