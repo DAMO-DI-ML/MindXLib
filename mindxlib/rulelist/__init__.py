@@ -2,6 +2,6 @@
 Rule list module.
 """
 
-from mindxlib.rulelist.ruleList_SSRL import SSRL
+from mindxlib.rulelist.rulelist_SSRL import SSRL
 
-__all__ = ['ruleList_SSRL']
+__all__ = ['rulelist_SSRL']
