@@ -62,39 +62,6 @@ class subproblem_solver():
             else:
                 break
         return init_rule
-    def initial_solution(self,A,B,C,lambda_0,lambda_1):
-        N = len(self.feature_list)
-        M = 16
-        K = 3
-        nn = max(round(N/M),5)
-        best_gain = -1e+15
-        for ii in range(300):
-            init_rule = []
-            A_bit_intersect = A
-            B_bit_intersect = B
-            C_bit_intersect = C
-            for idx in range(M):
-                max_gain = -1e+15
-                check_list = np.random.permutation(N)[:nn].tolist()
-                for idx_1 in check_list:
-                    feature = self.feature_list[idx_1]
-                    gain = -BitMap.difference_cardinality(A_bit_intersect,self.bitmap[feature])\
-                            +BitMap.difference_cardinality(B_bit_intersect,self.bitmap[feature])\
-                            +lambda_0*BitMap.difference_cardinality(C_bit_intersect,self.bitmap[feature])
-                    if gain>max_gain:
-                        max_gain = gain
-                        best_feature = feature
-                if max_gain>lambda_0*lambda_1:  
-                    init_rule.append(best_feature)
-                    A_bit_intersect = BitMap.intersection(A_bit_intersect,self.bitmap[best_feature])
-                    B_bit_intersect = BitMap.intersection(B_bit_intersect,self.bitmap[best_feature])
-                    C_bit_intersect = BitMap.intersection(C_bit_intersect,self.bitmap[best_feature])
-            gain_1 = len(A_bit_intersect)-len(B_bit_intersect)\
-                    -lambda_0*(len(C_bit_intersect)+lambda_1*len(init_rule))
-            if gain_1>best_gain:
-                best_gain = gain_1
-                best_init = init_rule
-        return best_init,best_gain
     
     def local_search(self,A,B,C,lambda_0,lambda_1):
         insert_improve = True
