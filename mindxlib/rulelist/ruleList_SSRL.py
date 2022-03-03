@@ -5,10 +5,8 @@ from pyroaring import BitMap
 import itertools
 from multiprocessing import Pool
 from concurrent.futures import ProcessPoolExecutor
-from datautil import DatasetLoader
-from features import FeatureBinarizer
 
-class subproblem_solver():
+class subProblemSolver():
     '''
     This class solve the problem
     |A\cap_{e\in S} e|-|B\cap_{e\in S} e|-lambda_0*(|C\cap_{e\in S} e|+lambda_1|S|)
@@ -331,7 +329,7 @@ class SSRL():
         self.full_set = None
         if cc is None:
             cc = 5*lambda_1
-        self.subproblem_solver = subproblem_solver(cc=cc)
+        self.subproblem_solver = subProblemSolver(cc=cc)
         self.distorted_step = distorted_step
         self.use_multi_pool = use_multi_pool
         self.defaultRuleName = None
