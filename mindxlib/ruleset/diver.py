@@ -7,6 +7,10 @@ import numpy as np
 import time
 import ast
 from mip import Model, xsum, minimize, BINARY, CONTINUOUS, Constr, Column, MINIMIZE
+from sklearn.metrics import balanced_accuracy_score, accuracy_score
+
+# import features
+# from datautil import DatasetLoader
 
 logging.basicConfig(
     # filename='logs/cgfpdiv.log',
@@ -17,6 +21,176 @@ logging.basicConfig(
 # logging.getLogger().setLevel(logging.DEBUG)
 # logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger()
+
+
+class Itemset(object):
+    '''
+    We use frozenset to represent an itemset.
+    '''
+    items: list = None
+    dbs: dict = None
+    labels: list = None
+
+    @staticmethod
+    def set_items(items: list):
+        Itemset.items = items
+
+    @staticmethod
+    def clear_db():
+        Itemset.dbs = dict()
+        Itemset.labels = list()
+
+    @staticmethod
+    def set_db(l: int, db: list):
+        Itemset.labels.append(l)
+        Itemset.labels = sorted(Itemset.labels)
+        Itemset.dbs[l] = db
+
+    @staticmethod
+    def db2idx(sign):
+        base = sum([len(Itemset.dbs[l]) for l in Itemset.labels if sign>l])
+        return [j+base for j, t in enumerate(Itemset.dbs[sign])]
+
+    def __init__(self, s: set, supp=False):
+        if len(s) > len(Itemset.items):
+            raise Exception('num of items < {}'.format(len(s)))
+        self.s = frozenset(s)
+        if supp is True:
+            self._cov = dict()
+            for l in Itemset.labels:
+                self._cov[l] = set([j for j,t in zip(Itemset.db2idx(l), Itemset.dbs[l]) if self.cover(t)])
+
+    def __len__(self) -> int:
+        return len(self.s)
+
+    def support(self, signs: list) -> int:
+        signs = set(signs)
+        return sum([self._support(l) for l in Itemset.labels if l in signs])
+
+    def _support(self, sign: int) -> int:
+        return len(self._cov[sign])
+
+    def coverage(self, signs: list) -> set:
+        '''Return a set of trans ids'''
+        signs = set(signs)
+        return set.union(*[self._cov[l] for l in Itemset.labels if l in signs])
+
+    def cover(self, T) -> bool:
+        if len(self) > len(T):
+            return False
+
+        diff = self.s.difference(T.s)
+        return True if len(diff)==0 else False
+
+    def itemdiff(self, other):
+        return self.s.difference(other.s)
+
+
+class Rule(Itemset):
+    '''
+    Rules that contain the same set of items are considered the same.
+    '''
+    @staticmethod
+    def quality(S: list, metric: str='kl') -> float:
+        '''A modular quality'''
+        if metric == 'kl':
+            return sum([s.kl for s in S])
+        if metric == 'acc':
+            return sum([s.acc for s in S])
+        raise Exception('')
+
+    def __init__(self, s: set, l: int):
+        super().__init__(s, supp=True)
+        self.label = l
+
+    def __eq__(self, other) -> bool:
+        '''
+        frozenset is hashable.
+        '''
+        return self.s == other.s and self.label == other.label
+
+    def __hash__(self):
+        return hash(self.s) ^ hash(self.label)
+
+    @property
+    def kl(self) -> int:
+        '''KL distance'''
+        supps = np.array([self.support([l_]) for l_ in Itemset.labels])
+        if sum(supps) == 0:
+            return 0
+
+        ns = np.array([len(Itemset.dbs[l_]) for l_ in Itemset.labels])
+        p = supps/sum(supps)
+        p = np.where(p > 1e-9, p, 1e-9)
+        q = ns/sum(ns) # q wouldn't be zero
+        kl = np.sum(np.where(p != 0, p * np.log(p / q), 0))
+
+        supp_l = self.support([self.label])
+        imb_l = self.support([self.label])/sum(supps) - len(Itemset.dbs[self.label])/sum(ns)
+        supp_l = supp_l if imb_l > 0 else 0
+        return np.sqrt(supp_l) * kl
+
+    @property
+    def acc(self) -> float:
+        '''TP / (TP + FP)'''
+        dnm = self.support(Itemset.labels)
+        if dnm == 0:
+            return 0.0
+        return self.support([self.label]) / dnm
+
+    def overlap(self, S: list, card=False) -> float:
+        if card:
+            c = self.coverage(Itemset.labels)
+            return [set.intersection(c, s.coverage(Itemset.labels)) for s in S]
+        else:
+            return sum([self._overlap(s) for s in S])
+
+    def _overlap(self, s) -> float:
+        '''Jaccard distance'''
+        c = self.coverage(Itemset.labels)
+        cs = s.coverage(Itemset.labels)
+        cap = set.intersection(c, cs)
+        if len(cap) == 0:
+            return 1
+        cup = set.union(c, cs)
+        return 1 - len(cap) / len(cup)
+
+    def trans(self, labels=None):
+        if labels is None:
+            labels = Itemset.labels
+        ll = [self._cov2db(l) for l in labels]
+        return [em for sl in ll for em in sl]
+
+    def _cov2db(self, label):
+        cov = self.coverage([label])
+        return [t for j, t in zip(Itemset.db2idx(label), Itemset.dbs[label]) if j in cov]
+
+
+class Transaction(Itemset):
+
+    def __init__(self, s: set):
+        super().__init__(s, supp=False)
+
+
+def prep_db(X: pd.DataFrame, y: np.ndarray):
+    '''X: Each row is a transaction'''
+    Itemset.set_items(range(X.shape[1]))
+    Itemset.set_items(range(X.shape[1]))
+    Itemset.dbs = dict()
+
+    for l in y.unique().tolist():
+        X_ = X[y == l]
+        db = _prep_db(X_ if type(X_) == np.ndarray else X_.values)
+        Itemset.set_db(l, db)
+
+
+def _prep_db(X: np.ndarray):
+    return [Transaction(feat2item(t)) for t in X]
+
+
+def feat2item(x: list):
+    '''Return active items'''
+    return np.nonzero(x)[0]
 
 
 # split the data, row data with label_col == label_val as outlier
@@ -377,266 +551,320 @@ def pattern_to_dict(p):
 # filter_dict1 = pattern_to_dict(pat)
 # filter_df = res.loc[(res[list(filter_dict1)] == pd.Series(filter_dict1)).all(axis=1)]
 
+class DIVER():
+    def __init__(self, label_col, label_val, pos_beta=1.5, overlap_beta_=0.2,
+                 complexity_cost=0.00001,dim_list=None,sup_ratio=0.01,
+                write_model=False, disable_log=True, cache_ind=False):
+        self.label_col =label_col
+        self.label_val = label_val
+        self.pos_beta = pos_beta
+        self.overlap_beta_ = overlap_beta_
+        self.complexity_cost = complexity_cost
+        self.dim_list = dim_list
+        self.sup_ratio = sup_ratio
+        self.write_model = write_model
+        self.disable_log = disable_log
+        self.cache_ind = cache_ind
 
-# core drill up procedure
-def drillUp(c_df, label_col, label_val, dim_list,
-            sup_ratio, test_dim_num,
-            pos_beta, overlap_beta_, complexity_cost,
-            write_model, disable_log, cache_ind, cover_index_):
-    """
-    Parameters
-        c_df: dataframe after preprocessed, groupby, add 'count' col
-        label_col: column name to represent label;
-        label_val: label_col == label_val -> outlier group
-        dim_list: list, cols used to drill up
-        sup_ratio: support ratio
-        min_pat_len: minimum len of pattern to include, to prune bad case
-        score_type: 'risk' and 'diffScore'
-    Return
-        a pandas dataframe
-    """
-    global cover_index
-    cover_index = cover_index_
-    global overlap_beta
-    overlap_beta = overlap_beta_
+    def fit(self, data_df):
+        label_cnt = data_df[self.label_col].value_counts()
+        label_info = [(label_cnt.index[k], label_val) for (k, label_val) in enumerate(label_cnt)]
+        sort_label_info = sorted(label_info, key=lambda x: x[1])
+        # print(sort_label_info)  #  [(0, 332), (1, 626)]
+        # print(sort_label_info[-1][0])
+        self.default_label = 0
 
-    logger.disabled = disable_log
+        output_rule = []
+        diver_rule = []
+        if self.dim_list is None:
+            self.dim_list = list(data_df.columns)
+            self.dim_list.remove(self.label_col)
+        Itemset.clear_db()
+        prep_db(data_df[self.dim_list],data_df[self.label_col])
+        res = self.drillUp(data_df, self.label_col, self.label_val, self.dim_list, self.sup_ratio,self.pos_beta,
+                      self.overlap_beta_,self.complexity_cost,self.write_model,self.disable_log,self.cache_ind)
+        for each_rule in res['lp_res']['short_rule']:
+            print(each_rule, self.label_val)
+            # print([self.dim_list.index(i) for i in each_rule])
+            output_rule.append(each_rule)
+            add = Rule([self.dim_list.index(i) for i in each_rule], self.label_val)
+            diver_rule.append(add)
+        self.return_rule = output_rule
+        self.diver_rule = diver_rule
+        return self
 
-    c_df['count'] = c_df['count'].astype(float)
-    if dim_list is None:
-        dim_list = ast.literal_eval(c_df['dim_list'].values[0])
-    if test_dim_num:
-        new_num = min(test_dim_num, len(dim_list))
-        dim_list = dim_list[:new_num]
+    def predict(self, X_test):
+        Xtest_list = [Transaction(feat2item(t)) for t in X_test.values]
+        ypredict_diver = predict_all(self.diver_rule, self.default_label, Xtest_list)
+        return ypredict_diver
+        # bacc = balanced_accuracy_score(y_test, ypredict_diver)
+        # acc = accuracy_score(y_test, ypredict_diver)
 
-    # throw away bad cols
-    bad_cols = []
-    num = c_df.shape[0]
-    for col in dim_list:
-        num_lvls = c_df[col].nunique(dropna=True)
-        if num_lvls <= 1:
-            bad_cols.append(col)
-    dim_list = [i for i in dim_list if i not in bad_cols]
 
-    # order data, first come pos, then neg
-    c_df.loc[c_df[label_col] == label_val, 'label'] = '1'
-    label_val = '1'
-    c_df.loc[c_df[label_col] != label_val, 'label'] = '0'
-    c_df = c_df.sort_values(by=['label'], ascending=False).reset_index()
-    tot_index_list = list(c_df['index'].values)
-    c_df = c_df[[i for i in c_df.columns if i != 'index']]
+    # core drill up procedure
+    def drillUp(self, c_df, label_col, label_val, dim_list,
+                sup_ratio,
+                pos_beta, overlap_beta_, complexity_cost,
+                write_model, disable_log, cache_ind):
+        """
+        Parameters
+            c_df: dataframe after preprocessed, groupby, add 'count' col
+            label_col: column name to represent label;
+            label_val: label_col == label_val -> outlier group
+            dim_list: list, cols used to drill up
+            sup_ratio: support ratio
+            min_pat_len: minimum len of pattern to include, to prune bad case
+            score_type: 'risk' and 'diffScore'
+        Return
+            a pandas dataframe
+        """
+        c_df['count'] = 1
+        c_df['col_has_other_map_no_other'] = ''
 
-    # step 1. split the data
-    outlier_df, inlier_df = split_data(c_df, label_col, label_val)
-    # print(outlier_df.head(5))
-    logging.info("Data split finished!")
-    logging.info("Ouliter shape {} and cnt {}".format(outlier_df.shape[0],
-                                                      outlier_df['count'].sum()))
+        global overlap_beta
+        overlap_beta = overlap_beta_
 
-    # step 2. get bit format for dataframe
-    outlier_bit_dict = bitify_data(outlier_df, dim_list, outlier_df.shape[0] - 1)
-    outlier_bit_dict_key = list(outlier_bit_dict['pos_bit'].keys()).copy()
-    outlier_bit_dict['count'] = np.array(outlier_df['count'])
-    # initial item-count dict for algo
-    init_dict = {}
-    for key in outlier_bit_dict_key:
-        # print(key)
-        bit_to_array = outlier_bit_dict['pos_bit'][key].to_array()
-        init_dict[key] = outlier_bit_dict['count'][bit_to_array].sum()
+        logger.disabled = disable_log
 
-    pos_index = BitMap(c_df[c_df[label_col] == label_val].index)
-    neg_index = BitMap(c_df[c_df[label_col] != label_val].index)
+        c_df['count'] = c_df['count'].astype(float)
 
-    global full_bit_dict
-    full_bit_dict = bitify_data(c_df, dim_list, pos_index[-1])
-    full_bit_dict['count'] = np.array(c_df['count'])
-    if 'contr' in c_df.columns:
-        full_bit_dict['contr'] = np.array(c_df['contr'])
-    full_bit_dict['tot_bit'] = BitMap(list(c_df.index))
-    full_bit_dict['tot_pos_bit'] = pos_index
-    full_bit_dict['tot_neg_bit'] = neg_index
-    # get to know the covered data bit info in this run
-    global cover_index_tobit
-    cover_index_tobit = BitMap([tot_index_list.index(i) for i in cover_index])
+        # throw away bad cols
+        bad_cols = []
+        num = c_df.shape[0]
+        for col in dim_list:
+            num_lvls = c_df[col].nunique(dropna=True)
+            if num_lvls <= 1:
+                bad_cols.append(col)
+        dim_list = [i for i in dim_list if i not in bad_cols]
 
-    logging.info("Data to bitmap finished! tot keys {}".format(
-        len(full_bit_dict['pos_bit'])))
-    global col_to_index, index_to_col
-    col_to_index, index_to_col = build_ref_dict(full_bit_dict)
+        # order data, first come pos, then neg
+        c_df.loc[c_df[label_col] == label_val, 'label'] = '1'
+        label_val = '1'
+        c_df.loc[c_df[label_col] != label_val, 'label'] = '0'
+        c_df = c_df.sort_values(by=['label'], ascending=False).reset_index()
+        tot_index_list = list(c_df['index'].values)
+        c_df = c_df[[i for i in c_df.columns if i != 'index']]
 
-    # step 3. fp-growth for both oulier and inlier
-    outlier_list = get_col_val_itemset(outlier_df, dim_list)
-    outlier_weight = list(outlier_df['count'].values)
-    global minsup
-    minsup = outlier_df['count'].sum() * sup_ratio
+        # step 1. split the data
+        outlier_df, inlier_df = split_data(c_df, label_col, label_val)
+        # print(outlier_df.head(5))
+        logging.info("Data split finished!")
+        logging.info("Ouliter shape {} and cnt {}".format(outlier_df.shape[0],
+                                                          outlier_df['count'].sum()))
 
-    global out_cnt, tot_cnt
-    out_cnt = outlier_df['count'].sum()
-    tot_cnt = c_df['count'].sum()
+        # step 2. get bit format for dataframe
+        outlier_bit_dict = bitify_data(outlier_df, dim_list, outlier_df.shape[0] - 1)
+        # print(outlier_bit_dict)
+        outlier_bit_dict_key = list(outlier_bit_dict['pos_bit'].keys()).copy()
+        outlier_bit_dict['count'] = np.array(outlier_df['count'])
+        # initial item-count dict for algo
+        init_dict = {}
+        for key in outlier_bit_dict_key:
+            # print(key)
+            bit_to_array = outlier_bit_dict['pos_bit'][key].to_array()
+            init_dict[key] = outlier_bit_dict['count'][bit_to_array].sum()
 
-    global fc_list, fc_cnt, max_score, time_profile
-    fc_list, fc_cnt, max_score = [], [0], [-float("inf")]
-    global lp_list, lp_res_cache, redu_cost_candi
-    lp_list, lp_res_cache = {'lp_list': []}, {}
-    redu_cost_candi = []
+        pos_index = BitMap(c_df[c_df[label_col] == label_val].index)
+        neg_index = BitMap(c_df[c_df[label_col] != label_val].index)
 
-    # global cache tree
-    global cache_tree, col_var, col_list, cache
-    cache_tree, col_var, col_list, cache = {}, [], [], cache_ind
-    # global best redu cost and dual var
-    global min_redu_cost, rule_cost_coef
-    # global best var and express var list
-    global best_var_list, express_var_list
-    global mu_array, mu_array_pos, mu_array_neg_index, mu_array_pos_index
+        global full_bit_dict
+        full_bit_dict = bitify_data(c_df, dim_list, pos_index[-1])
+        full_bit_dict['count'] = np.array(c_df['count'])
+        if 'contr' in c_df.columns:
+            full_bit_dict['contr'] = np.array(c_df['contr'])
+        full_bit_dict['tot_bit'] = BitMap(list(c_df.index))
+        full_bit_dict['tot_pos_bit'] = pos_index
+        full_bit_dict['tot_neg_bit'] = neg_index
+        # get to know the covered data bit info in this run
+        cover_index = set()
+        global cover_index_tobit
+        cover_index_tobit = BitMap([tot_index_list.index(i) for i in cover_index])
 
-    cur_model = None
-    new_var = []
-    # construct single item var
-    for k_i, i in enumerate(full_bit_dict['pos_bit']):
-        add_pos_bit = full_bit_dict['pos_bit'][i]
-        add_neg_bit = full_bit_dict['neg_bit'][i]
-        if cover_index_tobit:
-            add_all_bit = add_pos_bit.union(add_neg_bit)
-            overlap_cover_coef = len(add_all_bit.intersection(cover_index_tobit))
-        else:
-            overlap_cover_coef = 0
-        add_var = {'id': 'x' + str(k_i), 'pattern': [i], 'pos_bit': add_pos_bit, 'neg_bit': add_neg_bit,
-                   'neg_rule_coef': len(add_neg_bit),
-                   'pos_rule_coef': len(add_pos_bit),
-                   'overlap_cover_coef': overlap_cover_coef,
-                   'pat_len': len([i])}
-        new_var.append(add_var)
-        col_var.append(set([i]))
-    # print('single item new_var {} col_var {}'.format(len(new_var), len(col_var)))
-    # cgfp main loop
-    n = len(full_bit_dict['tot_bit'])
-    rule_cost_coef = complexity_cost * n
+        logging.info("Data to bitmap finished! tot keys {}".format(
+            len(full_bit_dict['pos_bit'])))
+        global col_to_index, index_to_col
+        col_to_index, index_to_col = build_ref_dict(full_bit_dict)
 
-    start_time = time.time()
-    find_better_var = True
-    global iteration, neg_var_cnt
-    iteration = [0]
-    mu_list = []
-    return_col_list = []
-    time_profile_list = []
-    solve_profile_list = []
-    # for k in range(5):
-    no_improv_cnt = 0
-    while find_better_var:
-        logging.debug('****************************')
-        logging.debug('****************************')
-        # print('tot vars {}'.format(len(col_var)))
-        solve_profile = {'cnt': 0.0, 'time': 0.0, 'vars': 0}
-        # solve RMLP with new vars
-        print('iteration {}'.format(iteration[0]))
+        # step 3. fp-growth for both oulier and inlier
+        outlier_list = get_col_val_itemset(outlier_df, dim_list)
+        outlier_weight = list(outlier_df['count'].values)
+        global minsup
+        minsup = outlier_df['count'].sum() * sup_ratio
 
-        if cur_model is None:
-            # print('solve inital single item LP')
-            prev_add_new_num = 0
-            prev_obj = None
-        print('add new vars {}'.format(len(new_var)))
-        lp_res = solve_mip(cur_model, new_var, True, pos_beta, overlap_beta, write_model)
-        col_list += copy.deepcopy(new_var)
-        return_col_list.append(copy.deepcopy(col_list))
-        mu_array = lp_res['mu_array']
-        mu_array_pos = np.array([0 if i < 0 else i for i in mu_array])
-        mu_array_neg_index = BitMap(np.where(mu_array < 0)[0])
-        mu_array_pos_index = BitMap(np.where(mu_array >= 0)[0])
-        mu_list.append(mu_array)
-        cur_model = lp_res['m_object']
-        obj = cur_model.objective_value
-        solve_profile['cnt'] += 1
-        solve_profile['time'] += lp_res['mip_time']
-        solve_profile['vars'] = len(cur_model.vars) - len(full_bit_dict['tot_pos_bit'])
-        solve_profile_list.append(solve_profile.copy())
-        print('obtain obj value so far {}'.format(obj))
-        if prev_obj is not None:
-            obj_gap = np.abs(obj - prev_obj)
-            if obj_gap < 1e-4:
-                # print('optimal no improve')
-                no_improv_cnt += 1
-            else:
-                no_improv_cnt = 0
-            if no_improv_cnt >= 2:
-                break
-        prev_obj = obj
+        global out_cnt, tot_cnt
+        out_cnt = outlier_df['count'].sum()
+        tot_cnt = c_df['count'].sum()
 
-        rules_num = len(cur_model.vars) - 2 * len(full_bit_dict['tot_pos_bit'])
-        # print('this many var {} in model'.format(rules_num))
-        if rules_num > 3000:
-            break
+        global fc_list, fc_cnt, max_score, time_profile
+        fc_list, fc_cnt, max_score = [], [0], [-float("inf")]
+        global lp_list, lp_res_cache, redu_cost_candi
+        lp_list, lp_res_cache = {'lp_list': []}, {}
+        redu_cost_candi = []
 
-        # fresh the min_redu_cost for mining use
-        min_redu_cost = [float('inf')]
-        # fresh cond node info for new start
-        cond_node_info = {'list': [], 'pos_bit': BitMap([]), 'neg_bit': BitMap([]), 'cnt': 0.0}
-        # fresh global best_var_list and express_var_list
-        best_var_list, express_var_list = [], []
-        # fresh time_profile
-        time_profile = ini_time_profile()
-        neg_var_cnt = [0]
+        # global cache tree
+        global cache_tree, col_var, col_list, cache
+        cache_tree, col_var, col_list, cache = {}, [], [], cache_ind
+        # global best redu cost and dual var
+        global min_redu_cost, rule_cost_coef
+        # global best var and express var list
+        global best_var_list, express_var_list
+        global mu_array, mu_array_pos, mu_array_neg_index, mu_array_pos_index
 
-        # main mining to find best redu cost candidate
-        fp_start = time.time()
-        outlier_fp_tree = cl_fptree(outlier_list, outlier_weight, cond_node_info, init_dict, True)
-        outlier_fp_tree.findfqt()
-        # save time profile
-        outlier_fp_tree.time_profile['fp_time'] = round(time.time() - fp_start, 3)
-        time_profile_list.append(outlier_fp_tree.time_profile.copy())
-        # check if good res exists
-        best_var = outlier_fp_tree.best_var_list
-        if min_redu_cost[0] / n >= -1e-5:
-            # print('no good redu cost')
-            best_var = []
-            good_res = []
-        else:
-            express_var = outlier_fp_tree.express_var_list
-            # express_var = []
-            more_cover_var = []
-            sort_express = sorted(express_var, key=lambda x: x['score'])
-            cover_pos_index = best_var[0]['pos_bit'].intersection(mu_array_pos_index)
-            for each_var in sort_express:
-                new_cover_part = each_var['pos_bit'].intersection(mu_array_pos_index.difference(cover_pos_index))
-                if new_cover_part:
-                    more_cover_var.append(each_var)
-                    cover_pos_index = cover_pos_index.union(new_cover_part)
-
-            # good_res = best_var + express_var
-            good_res = best_var + more_cover_var
-            # print('best neg cost candi is {} with score {}'.format(sorted(best_var[0]['pattern']), min_redu_cost[0]))
+        cur_model = None
         new_var = []
-        for i in good_res:
-            if set(i['pattern']) not in col_var and i not in new_var:
-                col_var.append(set(i['pattern'].copy()))
-                new_var.append(copy.deepcopy(i))
+        # construct single item var
+        for k_i, i in enumerate(full_bit_dict['pos_bit']):
+            add_pos_bit = full_bit_dict['pos_bit'][i]
+            add_neg_bit = full_bit_dict['neg_bit'][i]
+            if cover_index_tobit:
+                add_all_bit = add_pos_bit.union(add_neg_bit)
+                overlap_cover_coef = len(add_all_bit.intersection(cover_index_tobit))
+            else:
+                overlap_cover_coef = 0
+            add_var = {'id': 'x' + str(k_i), 'pattern': [i], 'pos_bit': add_pos_bit, 'neg_bit': add_neg_bit,
+                       'neg_rule_coef': len(add_neg_bit),
+                       'pos_rule_coef': len(add_pos_bit),
+                       'overlap_cover_coef': overlap_cover_coef,
+                       'pat_len': len([i])}
+            new_var.append(add_var)
+            col_var.append(set([i]))
+        # print('single item new_var {} col_var {}'.format(len(new_var), len(col_var)))
+        # cgfp main loop
+        n = len(full_bit_dict['tot_bit'])
+        rule_cost_coef = complexity_cost * n
 
-        # print('best neg cost candi score {}'.format(min_redu_cost[0]))
-        # logging.info('best neg cost candi is {}'.format(best_var))
-        # logging.info('good 0 neg cnt candi is {}'.format(express_var))
-        # logging.info('not in model ones are {} {}'.format(len(new_var), new_var))
+        start_time = time.time()
+        find_better_var = True
+        global iteration, neg_var_cnt
+        iteration = [0]
+        mu_list = []
+        return_col_list = []
+        time_profile_list = []
+        solve_profile_list = []
+        # for k in range(5):
+        no_improv_cnt = 0
+        while find_better_var:
+            logging.debug('****************************')
+            logging.debug('****************************')
+            # print('tot vars {}'.format(len(col_var)))
+            solve_profile = {'cnt': 0.0, 'time': 0.0, 'vars': 0}
+            # solve RMLP with new vars
+            print('iteration {}'.format(iteration[0]))
 
-        prev_add_new_num = len(new_var)
+            if cur_model is None:
+                # print('solve inital single item LP')
+                prev_add_new_num = 0
+                prev_obj = None
+            print('add new vars {}'.format(len(new_var)))
+            lp_res = solve_mip(cur_model, new_var, True, pos_beta, overlap_beta, write_model)
+            col_list += copy.deepcopy(new_var)
+            return_col_list.append(copy.deepcopy(col_list))
+            mu_array = lp_res['mu_array']
+            mu_array_pos = np.array([0 if i < 0 else i for i in mu_array])
+            mu_array_neg_index = BitMap(np.where(mu_array < 0)[0])
+            mu_array_pos_index = BitMap(np.where(mu_array >= 0)[0])
+            mu_list.append(mu_array)
+            cur_model = lp_res['m_object']
+            obj = cur_model.objective_value
+            solve_profile['cnt'] += 1
+            solve_profile['time'] += lp_res['mip_time']
+            solve_profile['vars'] = len(cur_model.vars) - len(full_bit_dict['tot_pos_bit'])
+            solve_profile_list.append(solve_profile.copy())
+            print('obtain obj value so far {}'.format(obj))
+            if prev_obj is not None:
+                obj_gap = np.abs(obj - prev_obj)
+                if obj_gap < 1e-4:
+                    # print('optimal no improve')
+                    no_improv_cnt += 1
+                else:
+                    no_improv_cnt = 0
+                if no_improv_cnt >= 2:
+                    break
+            prev_obj = obj
 
-        if not new_var:
-            find_better_var = False
-            # print('stop for no improved vars found')
-        # find_better_var = False
-    # print(time.time() - start_time)
-    short_rule_index = lp_res['short_rule_index']
-    # n_pos = len(full_bit_dict['tot_pos_bit'])
-    if short_rule_index:
-        union_pos_bit = BitMap.union(*[col_list[j]['pos_bit'] for j in short_rule_index])
-        union_neg_bit = BitMap.union(*[col_list[j]['neg_bit'] for j in short_rule_index])
-        union_bit = union_pos_bit.union(union_neg_bit)
-        this_cover_index = np.array(tot_index_list)[union_bit.to_array()]
-    else:
-        this_cover_index = []
+            rules_num = len(cur_model.vars) - 2 * len(full_bit_dict['tot_pos_bit'])
+            # print('this many var {} in model'.format(rules_num))
+            if rules_num > 3000:
+                break
 
-    return {'lp_res': lp_res, 'mu_list': mu_list, 'return_col_list': return_col_list, 'full_bit_dict': full_bit_dict,
-            'time_profile_list': time_profile_list, 'solve_profile_list': solve_profile_list,
-            'this_cover_index': set(this_cover_index)
-            }
+            # fresh the min_redu_cost for mining use
+            min_redu_cost = [float('inf')]
+            # fresh cond node info for new start
+            cond_node_info = {'list': [], 'pos_bit': BitMap([]), 'neg_bit': BitMap([]), 'cnt': 0.0}
+            # fresh global best_var_list and express_var_list
+            best_var_list, express_var_list = [], []
+            # fresh time_profile
+            time_profile = ini_time_profile()
+            neg_var_cnt = [0]
 
+            # main mining to find best redu cost candidate
+            fp_start = time.time()
+            outlier_fp_tree = cl_fptree(outlier_list, outlier_weight, cond_node_info, init_dict, True)
+            outlier_fp_tree.findfqt()
+            # save time profile
+            outlier_fp_tree.time_profile['fp_time'] = round(time.time() - fp_start, 3)
+            time_profile_list.append(outlier_fp_tree.time_profile.copy())
+            # check if good res exists
+            best_var = outlier_fp_tree.best_var_list
+            if min_redu_cost[0] / n >= -1e-5:
+                # print('no good redu cost')
+                best_var = []
+                good_res = []
+            else:
+                express_var = outlier_fp_tree.express_var_list
+                # express_var = []
+                more_cover_var = []
+                sort_express = sorted(express_var, key=lambda x: x['score'])
+                cover_pos_index = best_var[0]['pos_bit'].intersection(mu_array_pos_index)
+                for each_var in sort_express:
+                    new_cover_part = each_var['pos_bit'].intersection(mu_array_pos_index.difference(cover_pos_index))
+                    if new_cover_part:
+                        more_cover_var.append(each_var)
+                        cover_pos_index = cover_pos_index.union(new_cover_part)
+
+                # good_res = best_var + express_var
+                good_res = best_var + more_cover_var
+                # print('best neg cost candi is {} with score {}'.format(sorted(best_var[0]['pattern']), min_redu_cost[0]))
+            new_var = []
+            for i in good_res:
+                if set(i['pattern']) not in col_var and i not in new_var:
+                    col_var.append(set(i['pattern'].copy()))
+                    new_var.append(copy.deepcopy(i))
+
+            # print('best neg cost candi score {}'.format(min_redu_cost[0]))
+            # logging.info('best neg cost candi is {}'.format(best_var))
+            # logging.info('good 0 neg cnt candi is {}'.format(express_var))
+            # logging.info('not in model ones are {} {}'.format(len(new_var), new_var))
+
+            prev_add_new_num = len(new_var)
+
+            if not new_var:
+                find_better_var = False
+                # print('stop for no improved vars found')
+            # find_better_var = False
+        # print(time.time() - start_time)
+        short_rule_index = lp_res['short_rule_index']
+        # n_pos = len(full_bit_dict['tot_pos_bit'])
+        if short_rule_index:
+            union_pos_bit = BitMap.union(*[col_list[j]['pos_bit'] for j in short_rule_index])
+            union_neg_bit = BitMap.union(*[col_list[j]['neg_bit'] for j in short_rule_index])
+            union_bit = union_pos_bit.union(union_neg_bit)
+            this_cover_index = np.array(tot_index_list)[union_bit.to_array()]
+        else:
+            this_cover_index = []
+
+        return {'lp_res': lp_res, 'mu_list': mu_list, 'return_col_list': return_col_list, 'full_bit_dict': full_bit_dict,
+                'time_profile_list': time_profile_list, 'solve_profile_list': solve_profile_list
+                }
+
+def predict(rules, default, x) -> bool:
+    for r in rules:
+        if r.cover(x):
+            return r.label
+    return default
+
+def predict_all(rule, default, X: list) -> list:
+    return np.array([predict(rule, default, x) for x in X])
 
 def ini_time_profile():
     time_profile = {
@@ -1341,9 +1569,3 @@ def tree_redu_cost(neg_cnt_lb, pos_cnt_lb, overlap_beta, cond_node_pos_bit, cond
     logging.debug('current tree reduced cost {} is {}'.format(bound_type, round(tot_cost, 3)))
     return tot_cost
 
-
-# function to save result in list format
-def write_res(file_name, res):
-    with open(file_name + '.txt', 'w') as filehandle:
-        for listitem in res:
-            filehandle.write('%s\n' % listitem)
