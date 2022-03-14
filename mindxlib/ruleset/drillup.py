@@ -4,6 +4,7 @@ Author: Kai He <kai.he@alibaba-inc.com>
 Fan Yang <fanyang.yf@alibaba-inc.com>
 Cheng Zhou <zhoucheng.zc@alibaba-inc.com>
 """
+import re
 
 import pandas as pd
 import logging
@@ -1180,7 +1181,30 @@ class DrillUp():
         other_map_info['link'] = range(other_map_info.shape[0])
         return_df = out_df.merge(other_map_info, on=['link'], how='outer')
         self.return_df = return_df[[i for i in return_df.columns if i != 'link']]
+        self.output_rule = []
+        for each in self.cl_slim_res:
+            self.output_rule.append(each[0])
         return self
+
+    def predict(self, X_test):
+        predictions = X_test.apply(self.rule_set_cover, rule_list=self.output_rule, axis=1)
+        return predictions
+
+    def rule_set_cover(self, row, rule_list):
+        for i in range(len(rule_list)):
+            tmprule = rule_list[i]
+            if self.single_rule_cover(row, tmprule):  # 符合前提条件
+                return 1
+        return 0
+
+    def single_rule_cover(self, row, rule):  # 判断一个样本是否服从rule的前提条件,rule is a list of items
+        for eachfeature in rule:
+            if ":" in eachfeature:
+                feature_name = re.split(':', eachfeature)[0]
+                feature_val = re.split(':', eachfeature)[1]
+                if str(row[feature_name]) != feature_val:
+                    return False
+        return True
 
     # format set of rule to dictionary for filter df use
     def pattern_to_dict(self, p):
