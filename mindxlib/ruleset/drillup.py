@@ -1103,10 +1103,10 @@ class DrillUp():
         self.score_gap = score_gap
         self.score_type = score_type
 
-    def fit(self, data_df):
+    def fit(self, X, y):
+        data_df = pd.concat((X,y.to_frame()),axis=1)
         if self.dim_list is None:
-            self.dim_list = list(data_df.columns)
-            self.dim_list.remove(self.label_col)
+            self.dim_list = list(X.columns)
 
         c_df = preprocess(data_df,self.label_col,self.label_val,self.dim_list,self.min_dim_val_cnt)
         c_df['count'] = c_df['count'].astype(float)

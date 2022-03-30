@@ -1,5 +1,5 @@
 import numpy as np
-from mindxlib.rulelist.ruleList_SSRL import SSRL
+from mindxlib.rulelist.rulelist_SSRL import SSRL
 from mindxlib.utils.datautil import DatasetLoader
 from mindxlib.utils.features import FeatureBinarizer
 

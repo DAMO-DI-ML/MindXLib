@@ -566,7 +566,8 @@ class DIVER():
         self.disable_log = disable_log
         self.cache_ind = cache_ind
 
-    def fit(self, data_df):
+    def fit(self, X, y):
+        data_df = pd.concat((X, y.to_frame()), axis=1)
         label_cnt = data_df[self.label_col].value_counts()
         label_info = [(label_cnt.index[k], label_val) for (k, label_val) in enumerate(label_cnt)]
         sort_label_info = sorted(label_info, key=lambda x: x[1])

@@ -1,3 +1,5 @@
+from sklearn.metrics import accuracy_score
+
 from mindxlib.utils.datautil import DatasetLoader
 from mindxlib.utils import features
 from mindxlib.ruleset.diver import DIVER
@@ -12,11 +14,13 @@ if __name__ == "__main__":
     print(dim_list)
     dim_list.remove('label')
 
+    X = onehot_data.drop(['label'], axis=1)
+    y_true = onehot_data['label'].astype(int)
+
     model = DIVER(label_col='label', label_val=1,pos_beta=0.8,overlap_beta_=0.0,complexity_cost=0.001)
-    model.fit(onehot_data)
+    model.fit(X, y_true)
     print(model.return_rule)
 
     y_predict = model.predict(onehot_data[dim_list])
-    y_true = onehot_data['label'].astype(int)
     acc= accuracy_score(y_true, y_predict)
     print(acc)
