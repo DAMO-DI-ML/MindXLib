@@ -1,5 +1,5 @@
 """
-Rule set model for classifying imbalanced data.
+Rule set model based on submodular optimization.
 """
 
 import os

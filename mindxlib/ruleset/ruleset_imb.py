@@ -16,6 +16,7 @@ from sklearn.base import BaseEstimator
 
 binpath = os.path.dirname(os.path.abspath(__file__)) + '/bin/f1rule'
 
+
 class RuleSetImb(BaseEstimator):
     def __init__(
         self, max_num_rules: int=16, time_limit=60, factor_g = 0.0,
