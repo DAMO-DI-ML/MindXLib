@@ -337,7 +337,7 @@ class SSRL():
         self.feature_bitmap_dict = {}
         self.label_bitmap_dict = {}
         for column in feature_columns:
-            one_hot_feature = dataset[[column]]
+            one_hot_feature = pd.get_dummies(dataset[column],prefix=column,prefix_sep='==')
             for one_hot_column in list(one_hot_feature.columns):
                 self.feature_bitmap_dict[one_hot_column] = BitMap(one_hot_feature[one_hot_feature[one_hot_column]>0.5].index)
 
