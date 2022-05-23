@@ -9,7 +9,6 @@ from mindxlib.ruleset import RuleSet
 def train(X, y):
     clf = RuleSet(
         max_num_rules=8,
-        factor_g=0.
     )
     clf.fit(X, y)
 

@@ -20,13 +20,12 @@ binpath = os.path.dirname(os.path.abspath(__file__)) + '/bin/fastrule-darwin-amd
 class RuleSet(BaseEstimator):
     def __init__(
         self, max_num_rules: int=16, time_limit=60,
-        local_search_iter = 0, beta_pos=1.0, beta_neg=1.0, 
+        beta_pos=1.0, beta_neg=1.0, 
         beta_diverse=0.1, beta_complex=0.1,parallelism=0, 
         warmcache=0, bestsubset=0, exactdepth=0, allowrandom=0,
         verbose=False
     ):
         self.max_num_rules = max_num_rules
-        self.local_search_iter = local_search_iter
         self.time_limit = time_limit
         self.beta_pos = beta_pos
         self.beta_neg = beta_neg
@@ -60,7 +59,6 @@ class RuleSet(BaseEstimator):
                 '-l', 'label',
                 '-o', 'h',
                 '-k', str(self.max_num_rules),
-                '-iter', str(self.local_search_iter),
                 '-t', str(self.time_limit) + 's',
                 '-c', str(self.warmcache),
                 '-b', str(self.bestsubset),

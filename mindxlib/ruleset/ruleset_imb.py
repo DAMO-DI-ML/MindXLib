@@ -14,7 +14,7 @@ import re
 from sklearn.base import BaseEstimator
 
 
-binpath = os.path.dirname(os.path.abspath(__file__)) + '/bin/f1rule-darwin-amd64'
+binpath = os.path.dirname(os.path.abspath(__file__)) + '/bin/f1rule-darwin-aarch64'
 
 
 class RuleSetImb(BaseEstimator):
