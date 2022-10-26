@@ -7,4 +7,5 @@ It aims to provide interpretable and efficient solutions to learning problems
 that are accessible to everybody and reusable in various contexts:		
 machine-learning as a versatile tool for science and engineering.		
 """		
-__all__ = ['pre_mining', 'rulelist', 'ruleset', 'utils']
+from .base import PostHocBlackBoxBase, PostHocWhiteBoxBase
+__all__ = ['pre_mining', 'rulelist', 'ruleset', 'utils', 'post_hoc_explainer', 'base']
