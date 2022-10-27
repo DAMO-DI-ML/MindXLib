@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mindxlib.ruleset package &mdash; mindxlib_doc 1.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> mindxlib_doc
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">mindxlib.ruleset package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#mindxlib-ruleset-diver-module">mindxlib.ruleset.diver module</a></li>
+<li><a class="reference internal" href="#module-mindxlib.ruleset.drillup">mindxlib.ruleset.drillup module</a></li>
+<li><a class="reference internal" href="#module-mindxlib.ruleset.ruleset">mindxlib.ruleset.ruleset module</a></li>
+<li><a class="reference internal" href="#module-mindxlib.ruleset.ruleset_imb">mindxlib.ruleset.ruleset_imb module</a></li>
+<li><a class="reference internal" href="#module-mindxlib.ruleset">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">mindxlib_doc</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>mindxlib.ruleset package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/mindxlib.ruleset.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="mindxlib-ruleset-package">
+<h1>mindxlib.ruleset package<a class="headerlink" href="#mindxlib-ruleset-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="mindxlib-ruleset-diver-module">
+<h2>mindxlib.ruleset.diver module<a class="headerlink" href="#mindxlib-ruleset-diver-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-mindxlib.ruleset.drillup">
+<span id="mindxlib-ruleset-drillup-module"></span><h2>mindxlib.ruleset.drillup module<a class="headerlink" href="#module-mindxlib.ruleset.drillup" title="Permalink to this headline">¶</a></h2>
+<p>MIT drillUp algorithm for pattern detection
+Author: Kai He &lt;<a class="reference external" href="mailto:kai&#46;he&#37;&#52;&#48;alibaba-inc&#46;com">kai<span>&#46;</span>he<span>&#64;</span>alibaba-inc<span>&#46;</span>com</a>&gt;
+Fan Yang &lt;<a class="reference external" href="mailto:fanyang&#46;yf&#37;&#52;&#48;alibaba-inc&#46;com">fanyang<span>&#46;</span>yf<span>&#64;</span>alibaba-inc<span>&#46;</span>com</a>&gt;
+Cheng Zhou &lt;<a class="reference external" href="mailto:zhoucheng&#46;zc&#37;&#52;&#48;alibaba-inc&#46;com">zhoucheng<span>&#46;</span>zc<span>&#64;</span>alibaba-inc<span>&#46;</span>com</a>&gt;</p>
+<dl class="py class">
+<dt id="mindxlib.ruleset.drillup.DrillUp">
+<em class="property">class </em><code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">DrillUp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">label_col</span></em>, <em class="sig-param"><span class="n">label_val</span></em>, <em class="sig-param"><span class="n">dim_list</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">min_dim_val_cnt</span><span class="o">=</span><span class="default_value">5</span></em>, <em class="sig-param"><span class="n">sup_ratio</span><span class="o">=</span><span class="default_value">0.01</span></em>, <em class="sig-param"><span class="n">out_num</span><span class="o">=</span><span class="default_value">100</span></em>, <em class="sig-param"><span class="n">jcd_limit</span><span class="o">=</span><span class="default_value">0.75</span></em>, <em class="sig-param"><span class="n">min_pat_len</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">score_gap</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">score_type</span><span class="o">=</span><span class="default_value">'risk'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.DrillUp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.DrillUp.filter_other">
+<code class="sig-name descname">filter_other</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">other_col</span></em>, <em class="sig-param"><span class="n">map_dict</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.DrillUp.filter_other" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>df: pandas dataframe
+other_col: list of col names that are ‘other&lt;’ in rules</p>
+</dd>
+<dt>Return</dt><dd><p>filtered pandas df</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.DrillUp.filter_unkown">
+<code class="sig-name descname">filter_unkown</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">unknown_col</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.DrillUp.filter_unkown" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>df: pandas dataframe
+unkown_col: list of col names that are ‘unknown’ in rules</p>
+</dd>
+<dt>Return</dt><dd><p>filtered pandas df</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.DrillUp.fit">
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">y</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.DrillUp.fit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.DrillUp.pattern_to_dict">
+<code class="sig-name descname">pattern_to_dict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.DrillUp.pattern_to_dict" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>p: set, represent rule found by drillUp</p>
+</dd>
+<dt>Return</dt><dd><p>dict, key:val means col:col_val</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.DrillUp.predict">
+<code class="sig-name descname">predict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X_test</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.DrillUp.predict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.DrillUp.ruleScore">
+<code class="sig-name descname">ruleScore</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">test_df</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.DrillUp.ruleScore" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>rule_df: direct output from drillUp module
+score_df: new data waiting to be scored by rule
+score_date_list: date range list users want to score
+date_col: colname for date in score_df
+label_col: colname of interset, e.g., “gamble_flag”
+label_val: col value to single out point of interest</p>
+</dd>
+<dt>Return</dt><dd><p>pandas dataframe, with
+[rules, dt, tot_count, poi_count, poi_ratio] as columns</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.DrillUp.rule_set_cover">
+<code class="sig-name descname">rule_set_cover</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">row</span></em>, <em class="sig-param"><span class="n">rule_list</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.DrillUp.rule_set_cover" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.DrillUp.single_rule_cover">
+<code class="sig-name descname">single_rule_cover</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">row</span></em>, <em class="sig-param"><span class="n">rule</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.DrillUp.single_rule_cover" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.bitify_data">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">bitify_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">dim_list</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.bitify_data" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>df: data to be bitify
+dim_list: list, cols used to drill up</p>
+</dd>
+<dt>Return</dt><dd><p>dict, each key:value is a col and its bit result in dim_list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.build_ref_dict">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">build_ref_dict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">full_bit_dict</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.build_ref_dict" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>full_bit_dict: dict for full data, with col as key, value is bitMap</p>
+</dd>
+<dt>Return</dt><dd><p>dict, dict, column to index map, and vice verse</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="mindxlib.ruleset.drillup.cl_fptree">
+<em class="property">class </em><code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">cl_fptree</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">freq_weight</span></em>, <em class="sig-param"><span class="n">fc_list</span></em>, <em class="sig-param"><span class="n">cond_node_list</span></em>, <em class="sig-param"><span class="n">cond_node_bit</span></em>, <em class="sig-param"><span class="n">minsup</span></em>, <em class="sig-param"><span class="n">out_cnt</span></em>, <em class="sig-param"><span class="n">tot_cnt</span></em>, <em class="sig-param"><span class="n">full_bit_dict</span></em>, <em class="sig-param"><span class="n">itm_dict_in</span></em>, <em class="sig-param"><span class="n">col_to_index</span></em>, <em class="sig-param"><span class="n">index_to_col</span></em>, <em class="sig-param"><span class="n">score_type</span></em>, <em class="sig-param"><span class="n">max_score</span></em>, <em class="sig-param"><span class="n">score_gap</span></em>, <em class="sig-param"><span class="n">time_profile</span></em>, <em class="sig-param"><span class="n">flip_sign</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_fptree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.cl_fptree.add_a_pattern">
+<code class="sig-name descname">add_a_pattern</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">i</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_fptree.add_a_pattern" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.cl_fptree.add_list_pattern">
+<code class="sig-name descname">add_list_pattern</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p_list</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_fptree.add_list_pattern" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.cl_fptree.condtreetran">
+<code class="sig-name descname">condtreetran</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">N</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_fptree.condtreetran" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.cl_fptree.construct">
+<code class="sig-name descname">construct</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_fptree.construct" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.cl_fptree.dir_get_fc">
+<code class="sig-name descname">dir_get_fc</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_fptree.dir_get_fc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.cl_fptree.findfqt">
+<code class="sig-name descname">findfqt</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">parentnode</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_fptree.findfqt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.cl_fptree.get_closed_list">
+<code class="sig-name descname">get_closed_list</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_fptree.get_closed_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.drillup.cl_fptree.update_cond_node_bit">
+<code class="sig-name descname">update_cond_node_bit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">new_col</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_fptree.update_cond_node_bit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="mindxlib.ruleset.drillup.cl_node">
+<em class="property">class </em><code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">cl_node</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">itm</span></em>, <em class="sig-param"><span class="n">itm_count</span></em>, <em class="sig-param"><span class="n">parent</span></em>, <em class="sig-param"><span class="n">link</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.cl_node" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.compress_data">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">compress_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">dim_list</span></em>, <em class="sig-param"><span class="n">label_col</span></em>, <em class="sig-param"><span class="n">label_val</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.compress_data" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>df: pandas df, original data
+dim_list: cleaned dim list for group by use</p>
+</dd>
+<dt>Return</dt><dd><p>pandas df, add a ‘count’ column</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.detect_bad_cols">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">detect_bad_cols</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">dim_list</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.detect_bad_cols" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>df: pandas df, original data
+dim_list: user pre-specified columns, may contain bad ones</p>
+</dd>
+<dt>Return</dt><dd><p>list, list of col names to exclude from dim_list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.drillUp">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">drillUp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">c_df</span></em>, <em class="sig-param"><span class="n">label_col</span></em>, <em class="sig-param"><span class="n">label_val</span></em>, <em class="sig-param"><span class="n">col_cond_dict</span></em>, <em class="sig-param"><span class="n">dim_list</span></em>, <em class="sig-param"><span class="n">min_dim_val_cnt</span></em>, <em class="sig-param"><span class="n">sup_ratio</span></em>, <em class="sig-param"><span class="n">out_num</span></em>, <em class="sig-param"><span class="n">jcd_limit</span></em>, <em class="sig-param"><span class="n">min_pat_len</span></em>, <em class="sig-param"><span class="n">score_type</span></em>, <em class="sig-param"><span class="n">score_gap</span></em>, <em class="sig-param"><span class="n">test_dim_num</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.drillUp" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>c_df: dataframe after preprocessed, groupby, add ‘count’ col
+label_col: column name to represent label;
+label_val: label_col == label_val -&gt; outlier group
+col_cond_dict: dict, if label_col not create yet, use this to create
+dim_list: list, cols used to drill up
+min_dim_val_cnt: min dim value count to be replaced with ‘other&lt;’
+sup_ratio: support ratio
+out_num: number of ranked top results
+jcd_limit: float, jaccard similirity, add new pattern when &lt; limit
+min_pat_len: minimum len of pattern to include, to prune bad case
+score_type: ‘risk’ and ‘diffScore’</p>
+</dd>
+<dt>Return</dt><dd><p>a pandas dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.fill_miss">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">fill_miss</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">dim_list</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.fill_miss" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>df: pandas df
+dim_list: dimension list</p>
+</dd>
+<dt>Return</dt><dd><p>a filled missing value df, if a dim is numeric
+set to str and fill with ‘unknown&lt;’</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.filter_pat_via_bit">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">filter_pat_via_bit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pattern</span></em>, <em class="sig-param"><span class="n">data_bit_dict</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.filter_pat_via_bit" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>pattern: a pattern from mined result
+data_bit_dict: bited data</p>
+</dd>
+<dt>Return</dt><dd><p>BitMap result, after filter data by pattern bit</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.final_res_assemble">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">final_res_assemble</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cl_slim_res</span></em>, <em class="sig-param"><span class="n">out_num</span></em>, <em class="sig-param"><span class="n">label_col</span></em>, <em class="sig-param"><span class="n">label_val</span></em>, <em class="sig-param"><span class="n">full_bit_dict</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.final_res_assemble" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>cl_slim_res: ranked top results
+out_num: number of ranked top results
+label_col: column name to represent label;
+label_val: label_col == label_val -&gt; outlier group
+full_bit_dict: dict for full data, with col as key, value is bitMap</p>
+</dd>
+<dt>Return</dt><dd><p>pandas dataframe, with [rules, count, label_col + “_ratio”’ as columns</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.get_col_val_itemset">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">get_col_val_itemset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">dim_list</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.get_col_val_itemset" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters:</dt><dd><p>df: pandas dataframe
+dim_list: list, cols used to drill up</p>
+</dd>
+<dt>Return:</dt><dd><p>List of itemset list, all in col:val format</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.get_pat_cnt">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">get_pat_cnt</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pattern_bit</span></em>, <em class="sig-param"><span class="n">data_bit_dict</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.get_pat_cnt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.get_pat_contr">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">get_pat_contr</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pattern_bit</span></em>, <em class="sig-param"><span class="n">data_bit_dict</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.get_pat_contr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.get_score_ub">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">get_score_ub</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pattern_cnt</span></em>, <em class="sig-param"><span class="n">pat_lb</span></em>, <em class="sig-param"><span class="n">out_cnt</span></em>, <em class="sig-param"><span class="n">tot_cnt</span></em>, <em class="sig-param"><span class="n">score_type</span></em>, <em class="sig-param"><span class="n">flip_sign</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.get_score_ub" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>pattern_cnt: pat upper bound in outlier
+pat_lb: pat lower bound in inlier
+out_cnt: outlier count sum
+tot_cnt: total count sum</p>
+</dd>
+<dt>Return</dt><dd><p>an upper bound risk score</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.jcd_dist">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">jcd_dist</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pattern1</span></em>, <em class="sig-param"><span class="n">pattern2</span></em>, <em class="sig-param"><span class="n">full_bit_dict</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.jcd_dist" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>pattern1, pattern2: patterns to compare
+full_bit_dict: dict for full data, with col as key, value is bitMap</p>
+</dd>
+<dt>Return</dt><dd><p>float, len of intersect data/union by two patterns</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.mp_f_bit">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">mp_f_bit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input_tuple</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.mp_f_bit" title="Permalink to this definition">¶</a></dt>
+<dd><dl>
+<dt>Parameters</dt><dd><dl class="simple">
+<dt>input_tuple: (pattern, pattern_cnt, out_cnt, tot_cnt,</dt><dd><p>full_bit_dict, score_type)</p>
+</dd>
+</dl>
+<p>pattern: an itemset, col:val type
+pattern_cnt: weighted count of pattern from mining
+out_cnt: total weighted outliers count
+tot_cnt: total weighted count
+full_bit_dict: dict for full data, with col as key, value is bitMap
+score_type: ‘risk’ and ‘diffScore’</p>
+</dd>
+<dt>Return</dt><dd><p>[pattern, pattern_cnt, interestingness_score]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.pat_bit">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">pat_bit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">col_to_index</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.pat_bit" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>p: pattern
+col_to_index: dict map item (col name) to its index</p>
+</dd>
+<dt>Return</dt><dd><p>BitMap, rep for pattern</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.post_process">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">post_process</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cl_res</span></em>, <em class="sig-param"><span class="n">out_num</span></em>, <em class="sig-param"><span class="n">jcd_limit</span></em>, <em class="sig-param"><span class="n">min_pat_len</span></em>, <em class="sig-param"><span class="n">full_bit_dict</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.post_process" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>cl_res: list of lists, patterns including pattern, cnt, and score
+out_num: int, number of top patterns need to return
+jcd_limit: float, jaccard similirity, add new pattern when &lt; limit
+min_pat_len: minimum len of pattern to include, to prune bad case
+full_bit_dict: dict for full data, with col as key, value is bitMap</p>
+</dd>
+<dt>Return</dt><dd><p>list of lists, final top subset patterns</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.preprocess">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">preprocess</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">label_col</span></em>, <em class="sig-param"><span class="n">label_val</span></em>, <em class="sig-param"><span class="n">dim_list</span></em>, <em class="sig-param"><span class="n">min_dim_val_cnt</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.preprocess" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>df: dataframe after preprocessed, groupby, add ‘count’ col
+label_col: column name to represent label;
+label_val: label_col == label_val -&gt; outlier group
+dim_list: list, cols used to drill up
+min_dim_val_cnt: min dim value count to be replaced with ‘other&lt;’</p>
+</dd>
+<dt>Return</dt><dd><p>a pandas dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.reduce_dim_val">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">reduce_dim_val</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">dim_list</span></em>, <em class="sig-param"><span class="n">min_dim_val_cnt</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.reduce_dim_val" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>df: dataframe with missing value filled
+dim_list: dimension list
+min_dim_val_cnt: min dim value count to be replaced with ‘other&lt;’</p>
+</dd>
+<dt>Return</dt><dd><p>a pandas dataframe, with “col_has_other_map_no_other” col</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.score_candi">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">score_candi</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">itemset_candi</span></em>, <em class="sig-param"><span class="n">out_cnt</span></em>, <em class="sig-param"><span class="n">tot_cnt</span></em>, <em class="sig-param"><span class="n">full_bit_dict</span></em>, <em class="sig-param"><span class="n">score_type</span></em>, <em class="sig-param"><span class="n">flip_sign</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.score_candi" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>itemset_candi: list of pattern info, format[pattern, pattern_cnt]
+pattern: an itemset, col:val type
+pattern_cnt: weighted count of pattern from mining
+out_cnt: total weighted outliers count
+tot_cnt: total weighted count
+full_bit_dict: dict for full data, with col as key, value is bitMap
+score_type: ‘risk’ and ‘diffScore’</p>
+</dd>
+<dt>Return</dt><dd><p>[pattern, pattern_cnt, interestingness_score]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.ruleset.drillup.split_data">
+<code class="sig-prename descclassname">mindxlib.ruleset.drillup.</code><code class="sig-name descname">split_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">label_col</span></em>, <em class="sig-param"><span class="n">label_val</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.drillup.split_data" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Parameters</dt><dd><p>df: pandas dataframe
+label_col: column name to represent label;
+label_val: label_col == label_val -&gt; outlier group</p>
+</dd>
+<dt>Return</dt><dd><p>Outlier pandas dataframe, Inlier pandas dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mindxlib.ruleset.ruleset">
+<span id="mindxlib-ruleset-ruleset-module"></span><h2>mindxlib.ruleset.ruleset module<a class="headerlink" href="#module-mindxlib.ruleset.ruleset" title="Permalink to this headline">¶</a></h2>
+<p>Rule set model based on submodular optimization.</p>
+<dl class="py class">
+<dt id="mindxlib.ruleset.ruleset.RuleSet">
+<em class="property">class </em><code class="sig-prename descclassname">mindxlib.ruleset.ruleset.</code><code class="sig-name descname">RuleSet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">max_num_rules</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">16</span></em>, <em class="sig-param"><span class="n">time_limit</span><span class="o">=</span><span class="default_value">60</span></em>, <em class="sig-param"><span class="n">beta_pos</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">beta_neg</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">beta_diverse</span><span class="o">=</span><span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">beta_complex</span><span class="o">=</span><span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">parallelism</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">warmcache</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">bestsubset</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">exactdepth</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">allowrandom</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.ruleset.RuleSet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.BaseEstimator</span></code></p>
+<dl class="py method">
+<dt id="mindxlib.ruleset.ruleset.RuleSet.fit">
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">y</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.ruleset.RuleSet.fit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.ruleset.RuleSet.predict">
+<code class="sig-name descname">predict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.ruleset.RuleSet.predict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-mindxlib.ruleset.ruleset_imb">
+<span id="mindxlib-ruleset-ruleset-imb-module"></span><h2>mindxlib.ruleset.ruleset_imb module<a class="headerlink" href="#module-mindxlib.ruleset.ruleset_imb" title="Permalink to this headline">¶</a></h2>
+<p>Rule set model for classifying imbalanced data.</p>
+<dl class="py class">
+<dt id="mindxlib.ruleset.ruleset_imb.RuleSetImb">
+<em class="property">class </em><code class="sig-prename descclassname">mindxlib.ruleset.ruleset_imb.</code><code class="sig-name descname">RuleSetImb</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">max_num_rules</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">16</span></em>, <em class="sig-param"><span class="n">time_limit</span><span class="o">=</span><span class="default_value">60</span></em>, <em class="sig-param"><span class="n">factor_g</span><span class="o">=</span><span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">local_search_iter</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">beta_pos</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">beta_neg</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">beta_diverse</span><span class="o">=</span><span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">beta_complex</span><span class="o">=</span><span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">parallelism</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">warmcache</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">bestsubset</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">exactdepth</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">allowrandom</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.ruleset_imb.RuleSetImb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.BaseEstimator</span></code></p>
+<dl class="py method">
+<dt id="mindxlib.ruleset.ruleset_imb.RuleSetImb.fit">
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">y</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.ruleset_imb.RuleSetImb.fit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.ruleset.ruleset_imb.RuleSetImb.predict">
+<code class="sig-name descname">predict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.ruleset.ruleset_imb.RuleSetImb.predict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-mindxlib.ruleset">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-mindxlib.ruleset" title="Permalink to this headline">¶</a></h2>
+<p>Rule set module.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Jingbang Yang.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

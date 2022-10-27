@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mindxlib.pre_mining package &mdash; mindxlib_doc 1.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> mindxlib_doc
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">mindxlib.pre_mining package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-mindxlib.pre_mining.extract_rule">mindxlib.pre_mining.extract_rule module</a></li>
+<li><a class="reference internal" href="#module-mindxlib.pre_mining.wkmodes_rule">mindxlib.pre_mining.wkmodes_rule module</a></li>
+<li><a class="reference internal" href="#module-mindxlib.pre_mining">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">mindxlib_doc</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>mindxlib.pre_mining package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/mindxlib.pre_mining.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="mindxlib-pre-mining-package">
+<h1>mindxlib.pre_mining package<a class="headerlink" href="#mindxlib-pre-mining-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-mindxlib.pre_mining.extract_rule">
+<span id="mindxlib-pre-mining-extract-rule-module"></span><h2>mindxlib.pre_mining.extract_rule module<a class="headerlink" href="#module-mindxlib.pre_mining.extract_rule" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="mindxlib.pre_mining.extract_rule.extract_fpgrowth">
+<code class="sig-prename descclassname">mindxlib.pre_mining.extract_rule.</code><code class="sig-name descname">extract_fpgrowth</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">minsupport</span><span class="o">=</span><span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">maxcardinality</span><span class="o">=</span><span class="default_value">2</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>Tuple<span class="p">]</span><a class="headerlink" href="#mindxlib.pre_mining.extract_rule.extract_fpgrowth" title="Permalink to this definition">¶</a></dt>
+<dd><p>extract frequent itemsets as rules from a one-hot dataframe</p>
+<dl class="simple">
+<dt>:param</dt><dd><p>X: pandas DataFrame, shape (n_samples, n_features), with onehot encoded format 0/1.</p>
+</dd>
+<dt>:param</dt><dd><dl class="simple">
+<dt>minsupport: float, between 0 and 1 for minimum support of the itemsets returned.</dt><dd><p>The support is computed as the fraction transactions_where_item(s)_occur / total_transactions.</p>
+</dd>
+</dl>
+</dd>
+<dt>:param</dt><dd><dl class="simple">
+<dt>maxcardinality: Maximum length of the itemsets generated. If <cite>None</cite> (default) all</dt><dd><p>possible itemsets lengths are evaluated.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>verbose</strong> – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>list of itemsets</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.extract_rule.extract_rf">
+<code class="sig-prename descclassname">mindxlib.pre_mining.extract_rule.</code><code class="sig-name descname">extract_rf</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">n_trees</span><span class="o">=</span><span class="default_value">100</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.extract_rule.extract_rf" title="Permalink to this definition">¶</a></dt>
+<dd><p>extract rules from random forest
+:param X: pandas DataFrame, shape (n_samples, n_features)
+:param y: shape (n_samples,)</p>
+<blockquote>
+<div><p>The target values (class labels in classification, real numbers in
+regression).</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>n_trees</strong> – int, default=100   The number of trees in the forest.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.extract_rule.extract_rules_from_tree">
+<code class="sig-prename descclassname">mindxlib.pre_mining.extract_rule.</code><code class="sig-name descname">extract_rules_from_tree</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">clf</span></em>, <em class="sig-param"><span class="n">X</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.extract_rule.extract_rules_from_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>extract rule from a single tree, which is already trained
+:param clf: tree estimator
+:param X: pandas DataFrame, shape (n_samples, n_features)
+:return: list of rules</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mindxlib.pre_mining.wkmodes_rule">
+<span id="mindxlib-pre-mining-wkmodes-rule-module"></span><h2>mindxlib.pre_mining.wkmodes_rule module<a class="headerlink" href="#module-mindxlib.pre_mining.wkmodes_rule" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.InitCentroids">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">InitCentroids</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">K</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.InitCentroids" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt id="mindxlib.pre_mining.wkmodes_rule.WKModes">
+<em class="property">class </em><code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">WKModes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n_clusters</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">max_iter</span><span class="o">=</span><span class="default_value">100</span></em>, <em class="sig-param"><span class="n">lambda_</span><span class="o">=</span><span class="default_value">7.0</span></em>, <em class="sig-param"><span class="n">gamma</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.WKModes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="mindxlib.pre_mining.wkmodes_rule.WKModes.fit">
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.WKModes.fit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.pre_mining.wkmodes_rule.WKModes.fit_predict">
+<code class="sig-name descname">fit_predict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">y</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.WKModes.fit_predict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.pre_mining.wkmodes_rule.WKModes.get_centers">
+<code class="sig-name descname">get_centers</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.WKModes.get_centers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.pre_mining.wkmodes_rule.WKModes.get_cost">
+<code class="sig-name descname">get_cost</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.WKModes.get_cost" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.pre_mining.wkmodes_rule.WKModes.get_params">
+<code class="sig-name descname">get_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.WKModes.get_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="mindxlib.pre_mining.wkmodes_rule.WKModes.get_weight">
+<code class="sig-name descname">get_weight</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.WKModes.get_weight" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.computeCentroidsAndWeights">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">computeCentroidsAndWeights</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">centroids</span></em>, <em class="sig-param"><span class="n">labels</span></em>, <em class="sig-param"><span class="n">K</span></em>, <em class="sig-param"><span class="n">lambda_</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.computeCentroidsAndWeights" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.extract_wkmodes">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">extract_wkmodes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data_df</span></em>, <em class="sig-param"><span class="n">label_col</span></em>, <em class="sig-param"><span class="n">label_val</span></em>, <em class="sig-param"><span class="n">pos_k</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">neg_k</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">lambda_</span><span class="o">=</span><span class="default_value">0.1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.extract_wkmodes" title="Permalink to this definition">¶</a></dt>
+<dd><p>extract rules based on weighted kmodes, which is a clustering method</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data_df</strong> – pandas DataFrame, including features and label as columns</p></li>
+<li><p><strong>label_col</strong> – column name of label</p></li>
+<li><p><strong>label_val</strong> – value of positive class in label_col</p></li>
+<li><p><strong>pos_k</strong> – user-defined num of clusters in positive samples, default None</p></li>
+<li><p><strong>neg_k</strong> – user-defined num of clusters in negative samples, default None</p></li>
+<li><p><strong>lambda</strong> – default 0.1, control the entropy of feature weights
+bigger value results in more uniform distribution of weights</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.findClosestCentroids">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">findClosestCentroids</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">w</span></em>, <em class="sig-param"><span class="n">centroids</span></em>, <em class="sig-param"><span class="n">gamma</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.findClosestCentroids" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.gen_batches">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">gen_batches</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em>, <em class="sig-param"><span class="n">batch_size</span></em>, <em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">min_batch_size</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.gen_batches" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.get_chunk_n_rows">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">get_chunk_n_rows</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">row_bytes</span></em>, <em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">max_n_rows</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">working_memory</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.get_chunk_n_rows" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.get_unique">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">get_unique</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input_list</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.get_unique" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.init_cao">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">init_cao</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">n_clusters</span></em>, <em class="sig-param"><span class="n">dissim</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.init_cao" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize centroids according to method by Cao et al. [2009].
+Note: O(N * attr * n_clusters**2), so watch out with large n_clusters</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.init_huang">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">init_huang</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">n_clusters</span></em>, <em class="sig-param"><span class="n">dissim</span></em>, <em class="sig-param"><span class="n">random_state</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.init_huang" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize centroids according to method by Huang [1997].</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.init_random">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">init_random</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">n_clusters</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.init_random" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.isConvergence">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">isConvergence</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">costF</span></em>, <em class="sig-param"><span class="n">max_iter</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.isConvergence" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.matching_dissim">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">matching_dissim</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">a</span></em>, <em class="sig-param"><span class="n">b</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.matching_dissim" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.pairwise_distances">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">pairwise_distances</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">w</span></em>, <em class="sig-param"><span class="n">centroids</span></em>, <em class="sig-param"><span class="n">gamma</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.pairwise_distances" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.pairwise_distances_argmin_min">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">pairwise_distances_argmin_min</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">w</span></em>, <em class="sig-param"><span class="n">centroids</span></em>, <em class="sig-param"><span class="n">gamma</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.pairwise_distances_argmin_min" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.pairwise_distances_chunked">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">pairwise_distances_chunked</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">w</span></em>, <em class="sig-param"><span class="n">centroids</span></em>, <em class="sig-param"><span class="n">gamma</span></em>, <em class="sig-param"><span class="n">reduce_func</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.pairwise_distances_chunked" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="mindxlib.pre_mining.wkmodes_rule.wkmodes">
+<code class="sig-prename descclassname">mindxlib.pre_mining.wkmodes_rule.</code><code class="sig-name descname">wkmodes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">K</span></em>, <em class="sig-param"><span class="n">max_iter</span></em>, <em class="sig-param"><span class="n">lambda_</span></em>, <em class="sig-param"><span class="n">gamma</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mindxlib.pre_mining.wkmodes_rule.wkmodes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-mindxlib.pre_mining">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-mindxlib.pre_mining" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Jingbang Yang.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
