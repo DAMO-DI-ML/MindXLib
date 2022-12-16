@@ -1,5 +1,8 @@
 #MindXLib
 
+## Install
+执行 > python setup --install
+就可以将 mindxlib 安装到Python的环境中，在任何目录下都能成功 'import mindxlib'.
 ## Introduction
 MindXLib是达摩院决策智能实验室数据决策团队在XAI(Explainable AI，可解释机器学习)领域深耕，展示算法成果的一个open toolkit。
 该算法包目前主要涵盖白盒模型相关的算法,用以解决需要可解释性的分类场景，包括rule set、rule list。
