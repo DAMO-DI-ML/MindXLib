@@ -2,3 +2,5 @@
 .idea
 *.pyc
 *.pyo
+*.json
+.env

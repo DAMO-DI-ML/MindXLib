@@ -40,9 +40,27 @@ install_requires = [
 # 	]
 
 setup(name="mindxlib",
-        version=1.0,
-        description='Alibaba Damo explainabel AI',
-        author='Mind, Alibaba Damo', 
-        packages=find_packages(),
-        include_package_data=True,
-        install_requires=install_requires)
+    version=1.0,
+    author='Alibaba Damo Academy', 
+    packages=find_packages(),
+    include_package_data=True,
+    install_requires=[
+    "numpy>=1.20.0",
+    "pandas>=1.3.0",
+    "scikit-learn>=1.0.0",
+    "shap>=0.41.0",
+    "lime>=0.2.0",
+    ],
+    python_requires=">=3.8",
+    author="TODO",
+    author_email="TODO@alibaba-inc.com]",
+    description="Explainable AI methods from Alibaba Damo Academy and common libraries",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    url="TODO:github",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: Apache Software License",
+        "Operating System :: OS Independent",
+    ],
+)
