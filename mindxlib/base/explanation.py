@@ -13,9 +13,7 @@ class BaseExplanation(ABC):
         """validate the legitimacy of the explanation results"""
         pass
 
-    def to_df(self):
-        """convert to standard DataFrame output"""
-        raise NotImplementedError
+
 
     def visualize(self):
         """general visualization interface"""
@@ -24,14 +22,33 @@ class BaseExplanation(ABC):
 
 # feature importance/Shapley value class
 class FeatureImportanceExplanation(BaseExplanation):
-    def __init__(self, data, baseline, scores, feature_names=None):
+    """Base class for storing feature importance/attribution explanations"""
+    
+    def __init__(self, data, attributions, interaction_effects=None):
+        """Initialize feature importance explanation
+        
+        Args:
+            data: Input data that was explained
+            attributions: Feature attributions/main effects with same shape as input data
+            interaction_effects: Optional interaction effects between features
+                Shape: (n_samples, n_features, n_features)
+        """
         super().__init__(data)
-        self.scores = scores  # importance scores [n_samples, n_features]
-        self.baseline = baseline  
-        self.feature_names = feature_names
+        self.attributions = attributions
+        self._interaction_effects = interaction_effects
+        
 
-    def to_df(self):
-        return pd.DataFrame(self.values, columns=self.feature_names)
+    # 
+        
+    @property 
+    def main_effect(self):
+        """Get main/individual feature effects"""
+        return self.attributions
+        
+    @property
+    def interaction_effect(self):
+        """Get interaction effects between features"""
+        return self._interaction_effects
 
 # shape function explanation (GAM)
 class GAMShapeFunctionExplanation(BaseExplanation):
