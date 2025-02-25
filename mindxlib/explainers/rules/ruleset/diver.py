@@ -551,7 +551,7 @@ def pattern_to_dict(p):
 # filter_dict1 = pattern_to_dict(pat)
 # filter_df = res.loc[(res[list(filter_dict1)] == pd.Series(filter_dict1)).all(axis=1)]
 
-class DIVER():
+class Diver():
     def __init__(self, label_col, label_val, pos_beta=1.5, overlap_beta_=0.2,
                  complexity_cost=0.00001,dim_list=None,sup_ratio=0.01,
                 write_model=False, disable_log=True, cache_ind=False):

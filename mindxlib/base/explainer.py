@@ -16,40 +16,29 @@ class ExplainerBase(ABC):
     """
     Base class for all explainers.
     """
-    def __init__(self, model):
+    def __init__(self, model, data=None, **kwargs):
         """
         Args:
-            model: The model to explain
+            model: prediction model
+            data: data to train explainer
         """
         self.model = model
-
+        self.data = data
+        
     @abstractmethod
-    def explain_instance(self, input_tensor, target_label=None):
-        """
-        Explains a single instance.
-
+    def explain(self, X, y=None, **kwargs):
+        """generate explanation results
         Args:
-            input_tensor: Input to explain
-            target_label: Target class to explain (for classification)
-
+            X: data to explain (tabular or time series)
+            y: corresponding labels (optional)
         Returns:
-            explanation: Explanation for the instance
+            Explanation results
         """
         pass
 
-    @abstractmethod
-    def explain_batch(self, inputs, target_labels=None):
-        """
-        Explains a batch of instances.
-
-        Args:
-            inputs: Batch of inputs to explain
-            target_labels: Target classes to explain
-
-        Returns:
-            explanations: Explanations for the batch
-        """
-        pass
+    def __call__(self, X, **kwargs):
+        """support function call"""
+        return self.explain(X, **kwargs)
 
 class BlackBoxBase(ExplainerBase):
     """

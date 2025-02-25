@@ -320,7 +320,7 @@ class subProblemSolver():
         return self.final_rule,final_gain
 
 class SSRL():
-    def __init__(self,lambda_1,distorted_step=10,cc=None,use_multi_pool=False):
+    def __init__(self,lambda_1=1,distorted_step=10,cc=None,use_multi_pool=False):
         self.lambda_1 = lambda_1
         self.default_rule_weight = 1
         self.current_rulelist = []
@@ -337,7 +337,8 @@ class SSRL():
         self.feature_bitmap_dict = {}
         self.label_bitmap_dict = {}
         for column in feature_columns:
-            one_hot_feature = pd.get_dummies(dataset[column],prefix=column,prefix_sep='==')
+            # one_hot_feature = pd.get_dummies(dataset[column],prefix=column,prefix_sep='==')
+            one_hot_feature = dataset[[column]]
             for one_hot_column in list(one_hot_feature.columns):
                 self.feature_bitmap_dict[one_hot_column] = BitMap(one_hot_feature[one_hot_feature[one_hot_column]>0.5].index)
 

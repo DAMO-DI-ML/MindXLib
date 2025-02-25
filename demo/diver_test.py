@@ -2,7 +2,7 @@ from sklearn.metrics import accuracy_score
 
 from mindxlib.utils.datautil import DatasetLoader
 from mindxlib.utils import features
-from mindxlib.ruleset.diver import DIVER
+from mindxlib.ruleset.diver import Diver
 
 if __name__ == "__main__":
     name = 'tic-tac-toe'
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     X = onehot_data.drop(['label'], axis=1)
     y_true = onehot_data['label'].astype(int)
 
-    model = DIVER(label_col='label', label_val=1,pos_beta=0.8,overlap_beta_=0.0,complexity_cost=0.001)
+    model = Diver(label_col='label', label_val=1,pos_beta=0.8,overlap_beta_=0.0,complexity_cost=0.001)
     model.fit(X, y_true)
     print(model.return_rule)
 
