@@ -5,6 +5,7 @@ from pyroaring import BitMap
 import itertools
 from multiprocessing import Pool
 from concurrent.futures import ProcessPoolExecutor
+from mindxlib.base.explainer import RuleExplainerBase
 
 class subProblemSolver():
     '''
@@ -319,8 +320,19 @@ class subProblemSolver():
             final_gain = len(A)-len(B)-lambda_0*len(C)
         return self.final_rule,final_gain
 
-class SSRL():
-    def __init__(self,lambda_1=1,distorted_step=10,cc=None,use_multi_pool=False):
+class SSRL(RuleExplainerBase):
+    def __init__(self, model=None, data=None, lambda_1=1, distorted_step=10, cc=None, use_multi_pool=False):
+        """Initialize SSRL rule explainer
+        
+        Args:
+            model: Optional model to explain (not used in SSRL)
+            data: Optional training data
+            lambda_1: Regularization parameter for rule length
+            distorted_step: Number of distortion steps
+            cc: Optional parameter for subproblem solver
+            use_multi_pool: Whether to use multiprocessing
+        """
+        super().__init__(model, data)
         self.lambda_1 = lambda_1
         self.default_rule_weight = 1
         self.current_rulelist = []
@@ -642,7 +654,11 @@ class SSRL():
             
         return gain, self.rulelist
 
-    def fit(self,X,y,defaultRuleName=None):
+    def fit(self, X, y, defaultRuleName=None):
+        """Fit the rule list (internal implementation)
+        
+        This method contains the original fit logic but is called by explain()
+        """
         if isinstance(X,pd.DataFrame) & isinstance(y,pd.DataFrame):
             feature_columns = list(X.columns)
             label_column = list(y.columns)
@@ -714,19 +730,75 @@ class SSRL():
         else:
             print('IF THEN '+str(self.defaultRuleName))
     
-    def predict(self,data):
+    def explain(self, X, y=None, **kwargs):
+        """Generate rule-based explanations
+        
+        Args:
+            X: Input features to explain
+            y: Ground truth labels (required)
+            **kwargs: Additional parameters
+            
+        Returns:
+            RuleExplanation object containing the learned rules
+        """
+        # Validate inputs
+        X, y = self._validate_input(X, y)
+        
+        if y is None:
+            raise ValueError("Labels (y) are required for SSRL")
+            
+        # Fit the rules
+        self.fit(X, y, **kwargs)
+        
+        # Format rules for explanation
+        rule_texts = []
+        coverage = {}
+        
+        # Format each rule
+        for i, rule in enumerate(self.rulelist[:-1]):  # Skip default rule
+            if i == 0:
+                prefix = "IF "
+            else:
+                prefix = "ELIF "
+                
+            condition = '&'.join(sorted(rule['condition']))
+            prediction = str(rule['label_name'])
+            rule_text = f"{prefix}{condition} THEN {prediction}"
+            rule_texts.append(rule_text)
+            
+            # Store coverage
+            coverage[rule_text] = rule['covered']
+            
+        # Add default rule
+        rule_text = f"ELSE {str(self.defaultRuleName)}"
+        rule_texts.append(rule_text)
+        coverage[rule_text] = self.rulelist[-1]['covered']
+        
+        return self._format_explanation(X, rule_texts, coverage)
+
+    def predict(self, data):
+        """Make predictions using learned rules
+        
+        Args:
+            data: Input features
+            
+        Returns:
+            Predictions from applying the rules
+        """
         return_type = 'DataFrame'
-        if isinstance(data,np.ndarray):
-            data = pd.DataFrame(data,columns=['f'+str(ii) for ii in range(data.shape[1])])
+        if isinstance(data, np.ndarray):
+            data = pd.DataFrame(data, columns=['f'+str(ii) for ii in range(data.shape[1])])
             return_type = 'ndarray'
-        elif not isinstance(data,pd.DataFrame):
-            raise ValueError('Unsupport data type!')
-        result_df = pd.Series(np.zeros(data.shape[0],dtype='int'), index=data.index)
+        elif not isinstance(data, pd.DataFrame):
+            raise ValueError('Unsupported data type!')
+            
+        result_df = pd.Series(np.zeros(data.shape[0], dtype='int'), index=data.index)
         for idx, row in data.iterrows():
             for idx_r in range(len(self.rulelist)):
                 if set(self.rulelist[idx_r]['condition']).issubset(set(row[row>0.5].index)):
-                    result_df.loc[idx]=self.rulelist[idx_r]['label_name']
+                    result_df.loc[idx] = self.rulelist[idx_r]['label_name']
                     break
+                    
         if return_type == 'DataFrame':
             return result_df
         else:
