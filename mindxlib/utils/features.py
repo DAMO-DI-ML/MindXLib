@@ -11,7 +11,7 @@ def _is_numeric_type(dtype):
     return np.issubdtype(dtype, np.integer) | np.issubdtype(dtype, np.floating)
 
 
-class FeatureBinarizer(TransformerMixin):
+class FeatureBinarizer(TransformerMixin): # TODO: Add support for numpy arrays  
     '''Transformer for binarizing categorical and ordinal features.
     
     For use with BooleanRuleCG, LogisticRuleRegression and LinearRuleRegression

@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 import warnings
-from mindxlib.base.explanation import Explanation, RuleExplanation, FeatureImportanceExplanation
+from mindxlib.base.explanation import RuleExplanation, FeatureImportanceExplanation
 """
 Base classes for explainable AI methods
 """
@@ -66,10 +66,12 @@ class RuleExplainerBase(ExplainerBase):
         """Make predictions using learned rules
         
         Args:
-            X: Input features
+            X: Input features (DataFrame or ndarray)
             
         Returns:
-            Predictions from applying the rules
+            Predictions from applying the rules as a 1D array or Series.
+            If input is DataFrame, returns Series. If input is ndarray, returns 1D ndarray.
+            Shape should be (n_samples,) where n_samples is X.shape[0]
         """
         pass
 
@@ -139,16 +141,25 @@ class RuleExplainerBase(ExplainerBase):
         
         Args:
             X: Input data
-            rule_texts: List of rule strings
+            rule_texts: List of rule strings 
             coverage: Dict mapping rules to covered examples
             
         Returns:
             RuleExplanation object
         """
+        # Convert SSRL rulelist format to explanation format
+        rules = []
+        for rule in self.rulelist[:-1]:  # Skip default rule
+            rules.append({
+                'condition': rule['condition'],
+                'prediction': rule['label_name'],
+                'coverage': rule['covered']
+            })
+        
         return RuleExplanation(
             data=X,
-            rules=rule_texts,
-            coverage=coverage
+            rules=rules,
+            default_rule=self.defaultRuleName
         )
 
 class FeatureImportanceExplainer(ExplainerBase):

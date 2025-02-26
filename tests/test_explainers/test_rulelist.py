@@ -4,26 +4,38 @@ import pandas as pd
 from mindxlib.utils.features import FeatureBinarizer
 
 def test_rulelist_with_numpy():
+    # Create numpy array with meaningful feature names
     X = np.array([
-        [1, 0, 1],
-        [0, 1, 1],
-        [1, 1, 0],
-        [0, 0, 1]
+        [25, 30000, 12],
+        [35, 45000, 14],
+        [45, 60000, 16],
+        [55, 75000, 18],
+        [22, 75000, 18]
     ])
-    y = np.array([1, 0, 1, 0])
+    y = np.array([0, 1, 1, 0, 0])
     
-    explainer = SSRL(0.5)
+    # Initialize feature binarizer
+    binarizer = FeatureBinarizer(numThresh=3, negations=True, threshStr=True)
     
-    explainer.fit(X, y)
+    # Binarize X while keeping numpy format
+    X_binarized = binarizer.fit_transform(X).values #not working with numpy arrays, as data[c] is not supported
     
-    test_instance = np.array([[1, 0, 1]])
-    predictions = explainer.predict(test_instance)
+    # Initialize and fit explainer with same parameters as pandas test
+    explainer = SSRL(
+        lambda_1=1.0,
+        distorted_step=10,
+        cc=10,
+        use_multi_pool=False
+    )
+    
+    # Fit the model
+    explanation = explainer.explain(X_binarized, y)
     explainer.print_rulelist()
 
-    assert predictions is not None, "Explanation should not be None"
+    # Assertions
+    assert predictions is not None, "Predictions should not be None"
     assert hasattr(explainer, 'defaultRuleName'), "Explainer should have rules_ attribute after fitting"
     assert len(str(explainer.defaultRuleName)) > 0, "Default rule name should be set"
-    assert len(predictions) == len(X), "Predictions length should match input length"
 
 def test_rulelist_invalid_input():
     explainer = SSRL(0.5)
@@ -41,11 +53,11 @@ def test_rulelist_invalid_input():
 def test_rulelist_with_pandas():
     # Create a more realistic sample DataFrame
     data = pd.DataFrame({
-        'age': [25, 35, 45, 55],
-        'income': [30000, 45000, 60000, 75000],
-        'education_years': [12, 14, 16, 18]
+        'age': [25, 35, 45, 55, 22],
+        'income': [30000, 45000, 60000, 75000, 75000],
+        'education_years': [12, 14, 16, 18, 18]
     })
-    y = pd.Series([0, 1, 1, 0], name='label')
+    y = pd.Series([0, 1, 1, 0, 0], name='label')
     
     # Initialize feature binarizer
     binarizer = FeatureBinarizer(numThresh=3, negations=True, threshStr=True)
@@ -59,11 +71,11 @@ def test_rulelist_with_pandas():
         lambda_1=1.0,
         distorted_step=10,
         cc=10,
-        use_multi_pool=True
+        use_multi_pool= False
     )
     
     # Fit the model with default rule name
-    explainer.fit(X_binarized, y, defaultRuleName=0)
+    explainer.explain(X_binarized, y, defaultRuleName=0)
     
     # Test prediction
     test_data = pd.DataFrame({

@@ -8,12 +8,12 @@ from concurrent.futures import ProcessPoolExecutor
 from mindxlib.base.explainer import RuleExplainerBase
 
 class subProblemSolver():
-    '''
+    """
     This class solve the problem
     |A\cap_{e\in S} e|-|B\cap_{e\in S} e|-lambda_0*(|C\cap_{e\in S} e|+lambda_1|S|)
     which equals to
     |\bar{B}\cup_{e\in S} \bar{e}|+lambda_0*|\bar{C}\cap_{e\in S} e|-|\bar{A}\cap_{e\in S} \bar{e}|-lambda_0*lambda_1|S|
-    '''
+    """
     def __init__(self,bitmap=None,patience_ratio=0.1,cc = 10):
         self.bitmap = bitmap
         self.last_rule = []
@@ -196,7 +196,7 @@ class subProblemSolver():
     def solve(self,A,B,C,lambda_0,lambda_1,lower_bound=None):
         """
         This function maximize 
-               |A \cap x_1 \cap x_2 ...|-|B \cap x_1 \cap x_2 ...|-lambda_0(|C \cap x_1 \cap x_2 ...|+lambda_1 |X|)
+        |A \cap x_1 \cap x_2 ...|-|B \cap x_1 \cap x_2 ...|-lambda_0(|C \cap x_1 \cap x_2 ...|+lambda_1 |X|)
         using modmod method.
         """
         self.feature_list = []
@@ -780,10 +780,10 @@ class SSRL(RuleExplainerBase):
         """Make predictions using learned rules
         
         Args:
-            data: Input features
+            data: Input features (DataFrame or ndarray)
             
         Returns:
-            Predictions from applying the rules
+            Predictions as 1D array or Series with shape (n_samples,)
         """
         return_type = 'DataFrame'
         if isinstance(data, np.ndarray):
@@ -792,15 +792,15 @@ class SSRL(RuleExplainerBase):
         elif not isinstance(data, pd.DataFrame):
             raise ValueError('Unsupported data type!')
             
-        result_df = pd.Series(np.zeros(data.shape[0], dtype='int'), index=data.index)
+        result = pd.Series(np.zeros(data.shape[0], dtype='int'), index=data.index)
         for idx, row in data.iterrows():
             for idx_r in range(len(self.rulelist)):
                 if set(self.rulelist[idx_r]['condition']).issubset(set(row[row>0.5].index)):
-                    result_df.loc[idx] = self.rulelist[idx_r]['label_name']
+                    result.loc[idx] = self.rulelist[idx_r]['label_name']
                     break
                     
         if return_type == 'DataFrame':
-            return result_df
+            return result  # Return Series
         else:
-            return result_df.values
+            return result.values  # Return 1D ndarray
     
