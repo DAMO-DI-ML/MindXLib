@@ -16,27 +16,27 @@ class FeatureBinarizer(TransformerMixin): # TODO: Add support for numpy arrays
     
     For use with BooleanRuleCG, LogisticRuleRegression and LinearRuleRegression
     '''
-    def __init__(self, colCateg=[], numThresh=9, negations=False, threshStr=False, returnOrd=False, **kwargs):
+    def __init__(self, categorical_features=[], num_thresh=9, negation=False, threshStr=True, returnOrd=False, **kwargs):
         """
         Args:
-            colCateg (list): Categorical features ('object' dtype automatically treated as categorical)
-            numThresh (int): Number of quantile thresholds used to binarize ordinal variables
+            categorical_features (list): Categorical features ('object' dtype automatically treated as categorical)
+            num_thresh (int): Number of quantile thresholds used to binarize ordinal variables
             negations (bool): Append negations
             threshStr (bool): Convert thresholds on ordinal features to strings
             returnOrd (bool): Also return standardized ordinal features
         """
         # List of categorical columns
-        if type(colCateg) is pd.Series:
-            self.colCateg = colCateg.tolist()
-        elif type(colCateg) is not list:
-            self.colCateg = [colCateg]
+        if type(categorical_features) is pd.Series:
+            self.categorical_features = categorical_features.tolist()
+        elif type(categorical_features) is not list:
+            self.categorical_features = [categorical_features]
         else:
-            self.colCateg = colCateg
+            self.categorical_features = categorical_features
         # Number of quantile thresholds used to binarize ordinal features
-        self.numThresh = numThresh
+        self.num_thresh = num_thresh
         self.thresh = {}
         # whether to append negations
-        self.negations = negations
+        self.negations = negation
         # whether to convert thresholds on ordinal features to strings
         self.threshStr = threshStr
         # Also return standardized ordinal features
@@ -58,7 +58,7 @@ class FeatureBinarizer(TransformerMixin): # TODO: Add support for numpy arrays
         '''
         data = X
         # Quantile probabilities
-        quantProb = np.linspace(1. / (self.numThresh + 1.), self.numThresh / (self.numThresh + 1.), self.numThresh)
+        quantProb = np.linspace(1. / (self.num_thresh + 1.), self.num_thresh / (self.num_thresh + 1.), self.num_thresh)
         # Initialize
         maps = {}
         enc = {}
@@ -81,7 +81,7 @@ class FeatureBinarizer(TransformerMixin): # TODO: Add support for numpy arrays
                     NaN.append(c)
 
             # Categorical column
-            elif (c in self.colCateg) or (data[c].dtype == 'object'):
+            elif (c in self.categorical_features) or (data[c].dtype == 'object'):
                 # OneHotEncoder object
                 enc[c] = OneHotEncoder(sparse=False, dtype=int, handle_unknown='ignore')
                 # Fit to observed categories
@@ -90,7 +90,7 @@ class FeatureBinarizer(TransformerMixin): # TODO: Add support for numpy arrays
             # Ordinal column
             elif _is_numeric_type(data[c].dtype):
                 # Few unique values
-                if valUniq <= self.numThresh + 1:
+                if valUniq <= self.num_thresh + 1:
                     # Thresholds are sorted unique values excluding maximum
                     thresh[c] = np.sort(data[c].unique())[:-1]
                 # Many unique values

@@ -10,48 +10,46 @@ class Explanation(ABC):
         """
         self.data = data
 
+    @abstractmethod
     def validate(self):
         """validate the legitimacy of the explanation results"""
         pass
 
-    def visualize(self):
+    @abstractmethod
+    def show(self):
         """general visualization interface"""
         pass
 
 class RuleExplanation(Explanation):
     """Class for rule-based explanations."""
     
-    def __init__(self, data: pd.DataFrame, rules: List[Dict[str, Any]], default_rule: Any):
+    def __init__(self, rules: List[Dict[str, Any]], default_rule: Any):
         """Initialize rule explanation.
         
         Args:
-            data: Original input data
             rules: List of rules where each rule is a dictionary containing:
                 - condition: List of feature conditions
-                - prediction: Predicted class/value
-                - coverage: Set of covered example indices
+                - label_name: Predicted class/value
+                - covered: Set of covered example indices
+                - length: Length of the rule
             default_rule: Default prediction when no rules match
         """
-        super().__init__(data)
-        self.rules = rules
+        self.rules = rules  # List of rule dictionaries
         self.default_rule = default_rule
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert rule explanation to dictionary format."""
-        return {
-            "rules": self.rules,
-            "default_rule": self.default_rule
-        }
+    def validate(self):
+        pass
         
-    def print_rules(self):
+    def show(self):
         """Print rules in human-readable format."""
-        if len(self.rules) > 0:
-            print('IF ' + ' AND '.join(self.rules[0]['condition']) + 
-                  ' THEN ' + str(self.rules[0]['prediction']))
-            for rule in self.rules[1:]:
-                print('ELIF ' + ' AND '.join(rule['condition']) + 
-                      ' THEN ' + str(rule['prediction']))
-        print('ELSE ' + str(self.default_rule))
+        N = len(self.rules)
+        if N > 0:
+            print('IF '+'&'.join(sorted(self.rules[0]['condition']))+' THEN '+str(self.rules[0]['label_name']))
+            for ii in range(1,N):
+                print('ELIF '+'&'.join(sorted(self.rules[ii]['condition']))+' THEN '+str(self.rules[ii]['label_name']))
+            print('ELSE '+str(self.default_rule))
+        else:
+            print('IF THEN '+str(self.default_rule))
 
 class FeatureImportanceExplanation(Explanation):
     """Class for feature importance explanations."""
