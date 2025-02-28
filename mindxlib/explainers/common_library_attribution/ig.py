@@ -1,7 +1,7 @@
 import numpy as np
-from ...core.base import WhiteBoxBase
+from mindxlib.base.explainer import FeatureImportanceExplainer
 
-class IntegratedGradients(WhiteBoxBase):
+class IntegratedGradients(FeatureImportanceExplainer):
     """
     Integrated Gradients attribution method for deep learning models.
     Based on the paper: https://arxiv.org/abs/1703.01365
@@ -55,20 +55,20 @@ class IntegratedGradients(WhiteBoxBase):
         gradients = self._get_gradients(interpolated, target_label)
 
         # Compute integral approximation
-        integrated_gradients = np.zeros_like(input_tensor)
+        integrated_gradients = np.zeros_like(input_tensor, dtype=np.float64)
         for i, weight in enumerate(weights):
             integrated_gradients += weight * gradients[i]
 
         return integrated_gradients * (input_tensor - baseline)
 
-    def explain_instance(self, input_tensor, target_label=None, baseline=None):
+    def explain_instance(self, input_tensor, baseline=None, target_label=None):
         """
         Explains the prediction for a given input tensor.
         
         Args:
             input_tensor: Input to explain (numpy array)
-            target_label: Target class to explain (for classification)
             baseline: Optional baseline input (if None, uses self.baseline)
+            target_label: Target class to explain (for classification)
             
         Returns:
             attributions: Attribution scores for each input feature
@@ -90,14 +90,14 @@ class IntegratedGradients(WhiteBoxBase):
 
         return attributions
 
-    def explain_batch(self, inputs, target_labels=None, baselines=None):
+    def _compute_attributions(self, inputs, baselines=None, target_labels=None):
         """
         Explains predictions for a batch of inputs
         
         Args:
             inputs: Batch of inputs to explain
-            target_labels: Target classes to explain
             baselines: Optional baselines for each input
+            target_label: Target class to explain (for classification)
             
         Returns:
             batch_attributions: Attribution scores for each input

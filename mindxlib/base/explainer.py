@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 import warnings
-from mindxlib.base.explanation import Explanation, RuleExplanation, FeatureImportanceExplanation
+from mindxlib.base.explanation import FeatureImportanceExplanation, GAMShapeFunctionExplanation, RuleExplanation
 """
 Base classes for explainable AI methods
 """
@@ -155,7 +155,7 @@ class FeatureImportanceExplainer(ExplainerBase):
     """Base class for feature importance/attribution explainers.
     
     This class provides common functionality for attribution methods that explain
-    feature importance, including both traditional methods (SHAP, LIME) and 
+    feature importance, including both traditional methods (IG, SHAP, LIME) and 
     time series methods (FDTemp).
     """
     

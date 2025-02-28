@@ -1,7 +1,7 @@
 from lime import lime_image, lime_text, lime_tabular
-from ...core.base import BlackBoxBase
+from mindxlib.base.explainer import FeatureImportanceExplainer
 
-class LimeExplainer(BlackBoxBase):
+class LimeExplainer(FeatureImportanceExplainer):
     def __init__(self, model, *argv, **kwargs):
         super().__init__(model)
 
