@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import warnings
 from mindxlib.base.explanation import RuleExplanation, FeatureImportanceExplanation
+
 """
 Base classes for explainable AI methods
 """

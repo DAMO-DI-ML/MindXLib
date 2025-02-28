@@ -56,13 +56,13 @@ class RuleExplanation(Explanation):
 class FeatureImportanceExplanation(Explanation):
     """Class for feature importance explanations."""
     
-    def __init__(self, feature_importance: Dict[str, float]):
+    def __init__(self, data: pd.DataFrame, feature_importance: Dict[str, float]):
         """Initialize feature importance explanation.
         
         Args:
             feature_importance (Dict[str, float]): Dictionary mapping feature names to importance scores
         """
-        super().__init__()
+        super().__init__(data)
         self.feature_importance = feature_importance
 
     def to_dict(self) -> Dict[str, Any]:

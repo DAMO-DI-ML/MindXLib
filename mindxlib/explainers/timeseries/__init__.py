@@ -2,8 +2,6 @@
 Time series model interpretation methods
 """
 
-from .fdtempexplainer import PatchContributionExplainer
-
-__all__ = [
-    'PatchContributionExplainer'
-]
+from .fdtempexplainer import FDTempExplainer
+from .explain_utils import ImpVAE, PatchAttributionTorch 
+# __all__ = ["ImpVAE", "Patch_attribution_torch", "FDTempExplainer"]
