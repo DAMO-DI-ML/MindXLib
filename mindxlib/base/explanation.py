@@ -3,12 +3,12 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 class Explanation(ABC):
-    def __init__(self, data: pd.DataFrame):
+    def __init__(self):
         """base class for all explanation results
         Args:
             data: original input data (unified to DataFrame, time series expanded to multiple columns)
         """
-        self.data = data
+        # self.data = data
 
     def validate(self):
         """validate the legitimacy of the explanation results"""
@@ -21,7 +21,7 @@ class Explanation(ABC):
 class RuleExplanation(Explanation):
     """Class for rule-based explanations."""
     
-    def __init__(self, data: pd.DataFrame, rules: List[Dict[str, Any]], default_rule: Any):
+    def __init__(self, rules: List[Dict[str, Any]], default_rule: Any):
         """Initialize rule explanation.
         
         Args:
@@ -32,7 +32,7 @@ class RuleExplanation(Explanation):
                 - coverage: Set of covered example indices
             default_rule: Default prediction when no rules match
         """
-        super().__init__(data)
+        super().__init__()
         self.rules = rules
         self.default_rule = default_rule
 
@@ -56,13 +56,13 @@ class RuleExplanation(Explanation):
 class FeatureImportanceExplanation(Explanation):
     """Class for feature importance explanations."""
     
-    def __init__(self, data: pd.DataFrame, feature_importance: Dict[str, float]):
+    def __init__(self, feature_importance: Dict[str, float]):
         """Initialize feature importance explanation.
         
         Args:
             feature_importance (Dict[str, float]): Dictionary mapping feature names to importance scores
         """
-        super().__init__(data)
+        super().__init__()
         self.feature_importance = feature_importance
 
     def to_dict(self) -> Dict[str, Any]:

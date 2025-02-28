@@ -47,7 +47,7 @@ class FDTempExplainer(FeatureImportanceExplainer):
         data = data.to(device)  # Move data to the specified device
         return data
 
-    def explain(self, baseline=None, patch_size=1, test_size=0.2, random_state=None, device="cpu", **kwargs):
+    def explain(self, args=None, baseline=None, patch_size=1, test_size=0.2, random_state=None, device="cpu", **kwargs):
         """Generate feature importance explanations
         
         Args:
@@ -72,11 +72,10 @@ class FDTempExplainer(FeatureImportanceExplainer):
         self.data = self.move_data_to_device(self.data, self.device)
 
         # Compute attributions
-        self.attribution_results = self._compute_attributions(self.data, patch_size, **kwargs)
+        self.attribution_results = self._compute_attributions(self.data, patch_size, args,**kwargs)
 
         # Store the explanation
         self._explanation = FeatureImportanceExplanation(
-            data=self.data,
             feature_importance=self.attribution_results
         )
         
@@ -107,7 +106,7 @@ class FDTempExplainer(FeatureImportanceExplainer):
         
         return data
 
-    def _compute_attributions(self, data, patch_size, **kwargs):
+    def _compute_attributions(self, data, patch_size, args, **kwargs):
         """Compute feature attributions
         
         Args:
@@ -136,6 +135,7 @@ class FDTempExplainer(FeatureImportanceExplainer):
             x_size=n_timesteps,
             is_numpy_model=False,
             generator=generator,
+            args = args,
             sample_num=sample_num,
             lambda_1=0,
             kk=100,
