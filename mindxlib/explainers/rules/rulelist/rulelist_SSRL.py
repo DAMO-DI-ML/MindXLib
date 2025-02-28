@@ -328,20 +328,28 @@ class subProblemSolver():
 class SSRL(RuleExplainer):
     def __init__(self, model=None, data=None, feature_prefix='f', lambda_1=1, distorted_step=10, cc=None, use_multi_pool=False, 
                  binarize_features=True, categorical_features=[], num_thresh=9, negation=True):
-        """Initialize SSRL rule explainer
+        """Initialize SSRL (Scalable Sparse Rule Lists) explainer.
         
+        SSRL learns interpretable rule lists from data using a scalable optimization approach.
+        The algorithm aims to find a compact set of rules that accurately predict the target while
+        maintaining interpretability through sparsity constraints.
+
         Args:
-            model: Optional model to explain (not used in SSRL)
+            model: Optional model to explain (not used in SSRL) 
             data: Optional training data
-            feature_prefix: Prefix for feature names if data is numpy array (default 'f')
-            lambda_1: Regularization parameter for rule length
-            distorted_step: Number of distortion steps
-            cc: Optional parameter for subproblem solver
-            use_multi_pool: Whether to use multiprocessing
-            binarize_features: Whether to binarize features using FeatureBinarizer
-            categorical_features: List of categorical columns for binarization (only used if binarize_features=True)
-            num_thresh: Number of thresholds for binarizing numeric features (only used if binarize_features=True)
-            negation: Whether to include negations in binarized features (only used if binarize_features=True)
+            feature_prefix: Prefix for feature names when using numpy arrays (default: 'f')
+            lambda_1: Regularization parameter for rule length (default: 1)
+            distorted_step: Number of distortion steps in optimization (default: 10)
+            cc: Parameter for subproblem solver (default: 5*lambda_1)
+            use_multi_pool: Whether to use multiprocessing (default: False)
+            binarize_features: Whether to automatically binarize features (default: True)
+            categorical_features: List of categorical column indices for binarization (default: [])
+            num_thresh: Number of thresholds for numeric feature binarization (default: 9)
+            negation: Whether to include negated features in binarization (default: True)
+
+        Example:
+            >>> from mindxlib.explainers.rules.rulelist import SSRL
+            >>> explainer = SSRL(lambda_1=1.0, binarize_features=True)
         """
         super().__init__(model, data)
         self.lambda_1 = lambda_1
@@ -356,7 +364,7 @@ class SSRL(RuleExplainer):
         self.subproblem_solver = subProblemSolver(cc=cc)
         self.distorted_step = distorted_step
         self.use_multi_pool = use_multi_pool
-        self.defaultRuleName = None
+        self.default_label = None
         
         # Feature binarization settings
         self.binarize_features = binarize_features
@@ -708,7 +716,7 @@ class SSRL(RuleExplainer):
             if is_fit:
                 self.feature_binarizer.fit(X)
             X = self.feature_binarizer.transform(X)
-            X.columns = [' '.join(col).strip() for col in X.columns.values]
+            X.columns = [''.join(col).strip() for col in X.columns.values]
 
         feature_columns = list(X.columns)
 
@@ -731,13 +739,13 @@ class SSRL(RuleExplainer):
         return X, y, feature_columns, label_column
     
     
-    def fit(self, X, y, defaultRuleName=None):
+    def fit(self, X, y, default_label=None):
         """Learn a rule list from data
         
         Args:
             X: Input features (DataFrame or ndarray) 
             y: Target labels (required, DataFrame, Series or ndarray)
-            defaultRuleName: Optional name for default rule (uses most frequent class if None)
+            default_label: Optional name for default rule (uses most frequent class if None)
             
         Returns:
             RuleExplanation object containing the learned rules
@@ -751,12 +759,12 @@ class SSRL(RuleExplainer):
         
         # Get default rule name
         label_counts = dataset[label_column].value_counts()
-        if defaultRuleName is None:
-            defaultRuleName = label_counts.argmax()
-            print(f"Using default rule name: {defaultRuleName} (most frequent class in data)")
-        elif defaultRuleName not in list(label_counts.index):
-            raise ValueError(f'defaultRuleName is not in the data: got {defaultRuleName}, expected one of {list(label_counts.index)}')
-        self.defaultRuleName = defaultRuleName
+        if default_label is None:
+            default_label = label_counts.idxmax()
+            print(f"Using default rule name: {default_label} (most frequent class in data)")
+        elif default_label not in list(label_counts.index):
+            raise ValueError(f'default_label is not in the data: got {default_label}, expected one of {list(label_counts.index)}')
+        self.default_label = default_label
 
         # Learn rules
         default_rulelist = self.get_bitmap(dataset, label_column, feature_columns)
@@ -764,7 +772,7 @@ class SSRL(RuleExplainer):
         best_rulelist = []
         
         for default_rule in default_rulelist:
-            if default_rule['label_name'] != defaultRuleName:
+            if default_rule['label_name'] != default_label:
                 continue
             self._sovle_approx_func(default_rule)
             gain, rule_list = self._local_search(default_rule)
@@ -783,7 +791,7 @@ class SSRL(RuleExplainer):
                 best_rulelist.append(default_rule)
                 
         self.rulelist = best_rulelist
-        self.rules = RuleExplanation(rules=best_rulelist[:-1], default_rule=self.defaultRuleName)
+        self.rules = RuleExplanation(rules=best_rulelist[:-1], default_rule=self.default_label)
 
     def predict(self, X):
         """Make predictions using learned rules
@@ -804,7 +812,7 @@ class SSRL(RuleExplainer):
         # Make predictions
         result = pd.Series(np.zeros(X.shape[0], dtype='int'), index=X.index)
         for idx, row in X.iterrows():
-            prediction = self.defaultRuleName  # Default prediction
+            prediction = self.default_label  # Default prediction
             for rule in self.rulelist[:-1]:  # Skip default rule
                 if set(rule['condition']).issubset(set(row[row>0.5].index)):
                     prediction = rule['label_name']

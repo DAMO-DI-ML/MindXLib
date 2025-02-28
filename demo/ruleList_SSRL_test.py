@@ -19,7 +19,7 @@ for name, para_v in para_dict.items():
     cc = para_v['cc']
     distorted_step = para_v['distorted_step']
     model = SSRL(lambda_1=lambda_1,distorted_step=distorted_step,cc=cc,use_multi_pool=True)
-    model.fit(df,y,defaultRuleName=0)
+    model.fit(df,y,default_label=0)
     pred_test = model.predict(df)
     acc = np.sum(1.0*(pred_test.values==y.values))/y.shape[0]
     print('The training acc is '+str(acc))

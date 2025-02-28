@@ -83,7 +83,7 @@ class FeatureBinarizer(TransformerMixin):
             # Categorical column
             elif (c in self.categorical_features) or (data[c].dtype == 'object'):
                 # OneHotEncoder object
-                enc[c] = OneHotEncoder(sparse=False, dtype=int, handle_unknown='ignore')
+                enc[c] = OneHotEncoder(sparse_output=False, dtype=int, handle_unknown='ignore') # sparse_output was sparse when sklearn <0.24
                 # Fit to observed categories
                 enc[c].fit(data[[c]])
 

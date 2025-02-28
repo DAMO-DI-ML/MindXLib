@@ -44,9 +44,9 @@ class RuleExplanation(Explanation):
         """Print rules in human-readable format."""
         N = len(self.rules)
         if N > 0:
-            print('IF '+'&'.join(sorted(self.rules[0]['condition']))+' THEN '+str(self.rules[0]['label_name']))
+            print('IF '+' AND '.join(sorted(self.rules[0]['condition']))+', THEN '+str(self.rules[0]['label_name']))
             for ii in range(1,N):
-                print('ELIF '+'&'.join(sorted(self.rules[ii]['condition']))+' THEN '+str(self.rules[ii]['label_name']))
+                print('ELIF '+' AND '.join(sorted(self.rules[ii]['condition']))+', THEN '+str(self.rules[ii]['label_name']))
             print('ELSE '+str(self.default_rule))
         else:
             print('IF THEN '+str(self.default_rule))
