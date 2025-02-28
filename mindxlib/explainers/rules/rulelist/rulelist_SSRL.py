@@ -327,7 +327,7 @@ class subProblemSolver():
 
 class SSRL(RuleExplainer):
     def __init__(self, model=None, data=None, feature_prefix='f', lambda_1=1, distorted_step=10, cc=None, use_multi_pool=False, 
-                 binarize_features=True, categorical_features=[], num_thresh=9, negation=False):
+                 binarize_features=True, categorical_features=[], num_thresh=9, negation=True):
         """Initialize SSRL rule explainer
         
         Args:
@@ -350,6 +350,7 @@ class SSRL(RuleExplainer):
         self.last_rulelist = []
         self.rulelist = []
         self.full_set = None
+        self.feature_prefix = feature_prefix
         if cc is None:
             cc = 5*lambda_1
         self.subproblem_solver = subProblemSolver(cc=cc)
@@ -678,7 +679,7 @@ class SSRL(RuleExplainer):
         return gain, self.rulelist
 
         
-    def _process_input_data(self, X, y=None):
+    def _process_input_data(self, X, y=None, is_fit = False):
         """Process input data into standardized format
         
         Args:
@@ -704,7 +705,9 @@ class SSRL(RuleExplainer):
 
         # Binarize features if enabled
         if self.binarize_features:
-            X = self.feature_binarizer.fit_transform(X)
+            if is_fit:
+                self.feature_binarizer.fit(X)
+            X = self.feature_binarizer.transform(X)
             X.columns = [' '.join(col).strip() for col in X.columns.values]
 
         feature_columns = list(X.columns)
@@ -740,7 +743,7 @@ class SSRL(RuleExplainer):
             RuleExplanation object containing the learned rules
         """          
         # Process input data
-        X, y, feature_columns, label_column = self._process_input_data(X, y)
+        X, y, feature_columns, label_column = self._process_input_data(X, y, is_fit=True)
         dataset = pd.concat((X, y), axis=1)
         
         # Store feature columns for prediction
@@ -794,22 +797,9 @@ class SSRL(RuleExplainer):
         if not hasattr(self, 'rulelist') or not self.rulelist:
             raise ValueError("Must call fit() before predict()")
             
-        if not hasattr(self, 'feature_columns_'):
-            warnings.warn("No feature_columns_ found. Model may not be fitted correctly.")
-
+        # Process input data using same preprocessing as fit()
         isndarray = isinstance(X, np.ndarray)
         X, _, feature_columns, _ = self._process_input_data(X)
-        
-        # Verify features match training data
-        missing_features = set(self.feature_columns_) - set(feature_columns)
-        if missing_features:
-            raise ValueError(f"Missing features that were used for training: {missing_features}")
-        
-        extra_features = set(feature_columns) - set(self.feature_columns_)
-        if extra_features:
-            warnings.warn(f"Additional features found that were not used in training: {extra_features}. Only using features used during training.")
-            # Only keep features used during training
-            X = X[self.feature_columns_]
         
         # Make predictions
         result = pd.Series(np.zeros(X.shape[0], dtype='int'), index=X.index)

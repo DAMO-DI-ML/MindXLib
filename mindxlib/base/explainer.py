@@ -84,13 +84,11 @@ class RuleExplainer(ExplainerBase):
             Predictions from applying the rules as a 1D array or Series.
             If input is DataFrame, returns Series. If input is ndarray, returns 1D ndarray.
             Shape should be (n_samples,) where n_samples is X.shape[0]
-            
-        Raises:
-            ValueError: If rules have not been learned via fit() yet
         """
-        if not hasattr(self, 'rules'):
-            raise ValueError("Must call fit() before predict()")
-
+        pass
+    
+    def explain(self, X):
+        return self.predict(X)
 
     def _validate_input(self, X, y=None):
         """Validate and format input data
