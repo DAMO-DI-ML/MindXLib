@@ -2,7 +2,7 @@ from sklearn.metrics import accuracy_score
 
 from mindxlib.utils.datautil import DatasetLoader
 from mindxlib.utils import features
-from mindxlib.ruleset.diver import Diver
+from mindxlib.explainers.rules.ruleset.diver import Diver
 
 if __name__ == "__main__":
     name = 'tic-tac-toe'

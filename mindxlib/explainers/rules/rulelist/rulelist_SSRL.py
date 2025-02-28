@@ -9,6 +9,7 @@ from mindxlib.base.explainer import RuleExplainer
 from mindxlib.base.explanation import RuleExplanation
 from mindxlib.utils.features import FeatureBinarizer
 import warnings
+from mindxlib.utils.datautil import process_input_data
 
 class subProblemSolver():
     """
@@ -687,56 +688,15 @@ class SSRL(RuleExplainer):
         return gain, self.rulelist
 
         
-    def _process_input_data(self, X, y=None, is_fit = False):
-        """Process input data into standardized format
-        
-        Args:
-            X: Input features (DataFrame, ndarray)
-            y: Target labels (DataFrame, Series, ndarray)
-            
-        Returns:
-            tuple: (dataset, feature_columns, label_column)
-                - dataset: Combined DataFrame of features and labels
-                - feature_columns: List of feature column names
-                - label_column: Name of label column
-        """
-        # Convert numpy arrays to pandas
-        if isinstance(X, np.ndarray):
-            X = pd.DataFrame(X, columns=[f'{self.feature_prefix}{i}' for i in range(X.shape[1])])
-        if isinstance(y, np.ndarray):
-            if len(y.shape) > 1 and y.shape[1] != 1 and y.shape[0] != 1:
-                raise ValueError(f'Ambiguous label column! Label array has shape {y.shape}')
-            y = pd.Series(y.reshape(-1), name='label')
-
-        if not isinstance(X, pd.DataFrame):
-            raise ValueError('X must be DataFrame or ndarray')
-
-        # Binarize features if enabled
-        if self.binarize_features:
-            if is_fit:
-                self.feature_binarizer.fit(X)
-            X = self.feature_binarizer.transform(X)
-            X.columns = [''.join(col).strip() for col in X.columns.values]
-
-        feature_columns = list(X.columns)
-
-        if y is None:
-            label_column = None
-        elif isinstance(y, pd.DataFrame):
-            label_column = list(y.columns)
-            if len(label_column) > 1:
-                warnings.warn(f'Multiple label columns found ({len(label_column)} columns). Using first column.')
-            label_column = label_column[0]
-        elif isinstance(y, pd.Series):
-            label_column = y.name
-            y = y.to_frame()
-        else:
-            raise ValueError('y must be DataFrame, Series or ndarray')
-
-        # Combine X and y
-        
-        
-        return X, y, feature_columns, label_column
+    def _process_input_data(self, X, y=None, is_fit=False):
+        """Process input data using utility function"""
+        return process_input_data(
+            X, 
+            y,
+            feature_prefix=self.feature_prefix,
+            feature_binarizer=self.feature_binarizer if self.binarize_features else None,
+            is_fit=is_fit
+        )
     
     
     def fit(self, X, y, default_label=None):

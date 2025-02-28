@@ -131,3 +131,61 @@ def test_rulelist_from_csv():
     ELSE positive
     The training acc is 0.98
     '''
+
+def test_rulelist_multiclass_with_pandas():
+    # Create a sample DataFrame with a multi-class target
+    data = pd.DataFrame({
+        'age': [25, 35, 45, 55, 22, 28, 32, 42, 50, 38, 48, 52],
+        'income': [30000, 45000, 60000, 75000, 75000, 50000, 65000, 40000, 80000, 70000, 55000, 62000],
+        'education_years': [12, 14, 16, 18, 18, 15, 16, 14, 19, 17, 15, 16]
+    })
+    # Three classes with more balanced distribution: 0 (low risk), 1 (medium risk), 2 (high risk)
+    y = pd.Series([0, 1, 2, 0, 1, 2, 1, 0, 2, 2, 1, 2], name='risk_level')
+    
+    # Initialize and fit explainer
+    explainer = SSRL(
+        lambda_1=1.0,
+        distorted_step=10,
+        cc=10,
+        use_multi_pool=False,
+        binarize_features=True,
+        categorical_features=[],
+        num_thresh=3,
+        negation=True
+    )
+    
+    # Fit the model
+    explainer.fit(data, y)
+    
+    # Show the rules
+    explainer.show()
+    
+    # Calculate training accuracy
+    train_predictions = explainer.predict(data)
+    train_acc = np.mean(train_predictions == y)
+    print(f'Training accuracy: {train_acc:.2f}')
+    
+    # Print class distribution
+    unique, counts = np.unique(y, return_counts=True)
+    print(f'Class distribution: {dict(zip(unique, counts))}')
+    
+    # Test predictions
+    test_data = pd.DataFrame({
+        'age': [30, 50],
+        'income': [50000, 70000],
+        'education_years': [15, 17]
+    })
+    
+    predictions = explainer.predict(test_data)
+    
+    # Verify predictions are within valid classes
+    assert all(pred in [0, 1, 2] for pred in predictions), "Predictions should be in [0, 1, 2]"
+    
+    # Test with different default label
+    explainer.fit(data, y, default_label=1)  # Set medium risk as default
+    explainer.show()
+    
+    # Calculate accuracy with new default label
+    train_predictions_default = explainer.predict(data)
+    train_acc_default = np.mean(train_predictions_default == y)
+    print(f'Training accuracy with default label=1: {train_acc_default:.2f}')
