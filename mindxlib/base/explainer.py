@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import warnings
 from mindxlib.base.explanation import FeatureImportanceExplanation, GAMShapeFunctionExplanation, RuleExplanation
+
 """
 Base classes for explainable AI methods
 """
@@ -18,7 +19,7 @@ class ExplainerBase(ABC):
     """
     Base class for all explainers.
     """
-    def __init__(self, model, data=None, **kwargs):
+    def __init__(self, model=None, data=None, **kwargs):
         """
         Args:
             model: prediction model
@@ -42,14 +43,14 @@ class ExplainerBase(ABC):
         """support function call"""
         return self.explain(X, **kwargs)
 
-class RuleExplainerBase(ExplainerBase):
+class RuleExplainer(ExplainerBase):
     """Base class for rule-based explainers.
     
     This class provides common functionality for rule-based explanation methods
     like rule lists, rule sets, and decision lists.
     """
     
-    def __init__(self, model, data=None, **kwargs):
+    def __init__(self, data=None, model=None, **kwargs):
         """Initialize rule explainer
         
         Args:
@@ -58,20 +59,37 @@ class RuleExplainerBase(ExplainerBase):
             **kwargs: Additional arguments for specific rule learners
         """
         super().__init__(model, data, **kwargs)
-        self.rules = []
+    
+    @abstractmethod
+    def fit(self, X, y, **kwargs):
+        """Learn rules from data
         
+        Args:
+            X: Input features (DataFrame or ndarray)
+            y: Target labels (Series, DataFrame or ndarray)
+            **kwargs: Additional parameters
+            
+        Returns:
+            RuleExplanation object containing the learned rules
+        """
+        pass
     
     @abstractmethod
     def predict(self, X):
         """Make predictions using learned rules
         
         Args:
-            X: Input features
+            X: Input features (DataFrame or ndarray)
             
         Returns:
-            Predictions from applying the rules
+            Predictions from applying the rules as a 1D array or Series.
+            If input is DataFrame, returns Series. If input is ndarray, returns 1D ndarray.
+            Shape should be (n_samples,) where n_samples is X.shape[0]
         """
         pass
+    
+    def explain(self, X):
+        return self.predict(X)
 
     def _validate_input(self, X, y=None):
         """Validate and format input data
@@ -106,50 +124,13 @@ class RuleExplainerBase(ExplainerBase):
             if x_is_pandas != y_is_pandas:
                 raise ValueError(f'X and y must be same type - got X: {type(X).__name__}, y: {type(y).__name__}')
         return X, y
-
-    def explain(self, X, y=None, **kwargs):
-        """Generate rule-based explanations
         
-        Args:
-            X: Input features to explain
-            y: Optional ground truth labels
-            **kwargs: Additional explanation parameters
-            
-        Returns:
-            RuleExplanation object containing the learned rules
-        """
-        # Validate inputs
-        X, y = self._validate_input(X, y)
-        
-        # Fit if not already fit
-        if not self.rules:
-            if y is None:
-                raise ValueError("Must provide labels (y) when fitting rules")
-            self.fit(X, y, **kwargs)
-            
-        # Format rules for explanation
-        rule_texts = []
-        coverage = {}
-        
-        # Specific formatting logic should be implemented by child classes
-        return self._format_explanation(X, rule_texts, coverage)
-        
-    def _format_explanation(self, X, rule_texts, coverage):
-        """Format rules into explanation object
-        
-        Args:
-            X: Input data
-            rule_texts: List of rule strings
-            coverage: Dict mapping rules to covered examples
-            
-        Returns:
-            RuleExplanation object
-        """
-        return RuleExplanation(
-            data=X,
-            rules=rule_texts,
-            coverage=coverage
-        )
+    def show(self):
+        """Display learned rules"""
+        if hasattr(self, 'rules'):
+            self.rules.show()
+        else:
+            raise ValueError("Must call fit() before show()")
 
 class FeatureImportanceExplainer(ExplainerBase):
     """Base class for feature importance/attribution explainers.

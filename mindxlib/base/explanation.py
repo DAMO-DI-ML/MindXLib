@@ -1,57 +1,87 @@
-from abc import ABC
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
-class BaseExplanation(ABC):
-    def __init__(self, data: pd.DataFrame):
+class Explanation(ABC):
+    def __init__(self):
         """base class for all explanation results
         Args:
             data: original input data (unified to DataFrame, time series expanded to multiple columns)
         """
-        self.data = data
+        # self.data = data
 
+    @abstractmethod
     def validate(self):
         """validate the legitimacy of the explanation results"""
         pass
 
-
-
-    def visualize(self):
+    @abstractmethod
+    def show(self):
         """general visualization interface"""
         pass
 
-
-# feature importance/Shapley value class
-class FeatureImportanceExplanation(BaseExplanation):
-    """Base class for storing feature importance/attribution explanations"""
+class RuleExplanation(Explanation):
+    """Class for rule-based explanations."""
     
-    def __init__(self, data, attributions, interaction_effects=None):
-        """Initialize feature importance explanation
+    def __init__(self, rules: List[Dict[str, Any]], default_rule: Any):
+        """Initialize rule explanation.
         
         Args:
-            data: Input data that was explained
-            attributions: Feature attributions/main effects with same shape as input data
-            interaction_effects: Optional interaction effects between features
-                Shape: (n_samples, n_features, n_features)
+            rules: List of rules where each rule is a dictionary containing:
+                - condition: List of feature conditions
+                - label_name: Predicted class/value
+                - covered: Set of covered example indices
+                - length: Length of the rule
+            default_rule: Default prediction when no rules match
         """
-        super().__init__(data)
-        self.attributions = attributions
-        self._interaction_effects = interaction_effects
-        
+        self.rules = rules  # List of rule dictionaries
+        self.default_rule = default_rule
 
-    # 
+    def validate(self):
+        pass
         
-    @property 
-    def main_effect(self):
-        """Get main/individual feature effects"""
-        return self.attributions
+    def show(self):
+        """Print rules in human-readable format."""
+        N = len(self.rules)
+        if N > 0:
+            print('IF '+'&'.join(sorted(self.rules[0]['condition']))+' THEN '+str(self.rules[0]['label_name']))
+            for ii in range(1,N):
+                print('ELIF '+'&'.join(sorted(self.rules[ii]['condition']))+' THEN '+str(self.rules[ii]['label_name']))
+            print('ELSE '+str(self.default_rule))
+        else:
+            print('IF THEN '+str(self.default_rule))
+
+class FeatureImportanceExplanation(Explanation):
+    """Class for feature importance explanations."""
+    
+    def __init__(self, feature_importance: Dict[str, float]):
+        """Initialize feature importance explanation.
         
-    @property
-    def interaction_effect(self):
-        """Get interaction effects between features"""
-        return self._interaction_effects
+        Args:
+            feature_importance (Dict[str, float]): Dictionary mapping feature names to importance scores
+        """
+        super().__init__()
+        
+        if not isinstance(feature_importance, dict):
+            feature_importance = {"feature_importance": feature_importance}
+        self.feature_importance = feature_importance
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert feature importance explanation to dictionary format.
+        
+        Returns:
+            Dict[str, Any]: Dictionary containing the feature importance scores
+        """
+        return {"feature_importance": self.feature_importance}
+    
+    def validate(self):
+        pass
+        
+    def show(self):
+        pass
 
 # shape function explanation (GAM)
-class GAMShapeFunctionExplanation(BaseExplanation):
+class GAMShapeFunctionExplanation(Explanation):
     def __init__(self, data, shape_functions, feature_ranges):
         super().__init__(data)
         self.shape_functions = shape_functions  # dict {feature: function}
@@ -60,13 +90,3 @@ class GAMShapeFunctionExplanation(BaseExplanation):
     def visualize(self, feature):
         """plot single feature shape function"""
         # 实现GAM可视化
-
-# rule explanation
-class RuleExplanation(BaseExplanation):
-    def __init__(self, data, rules, coverage):
-        super().__init__(data)
-        self.rules = rules       # e.g. ["IF age>10 THEN risk=0.2", ...]
-
-    def to_text(self):
-        """return natural language description"""
-        return "\n".join(self.rules)

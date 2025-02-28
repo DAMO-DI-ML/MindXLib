@@ -1,5 +1,6 @@
 import numpy as np
 from mindxlib.base.explainer import FeatureImportanceExplainer
+from mindxlib.base.explanation import FeatureImportanceExplanation
 
 class IntegratedGradients(FeatureImportanceExplainer):
     """
@@ -112,7 +113,9 @@ class IntegratedGradients(FeatureImportanceExplainer):
             attribution = self.explain_instance(input_tensor, target, baseline)
             batch_attributions.append(attribution)
 
-        return np.array(batch_attributions)
+        batch_attributions_explaination = FeatureImportanceExplanation(np.array(batch_attributions))
+        
+        return batch_attributions_explaination
 
     def validate_attributions(self, attributions, inputs, baseline=None):
         """

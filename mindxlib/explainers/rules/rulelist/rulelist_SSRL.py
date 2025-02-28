@@ -4,16 +4,19 @@ from collections import defaultdict
 from pyroaring import BitMap
 import itertools
 from multiprocessing import Pool
-from concurrent.futures import ProcessPoolExecutor
-from mindxlib.base.explainer import RuleExplainerBase
+# from concurrent.futures import ProcessPoolExecutor
+from mindxlib.base.explainer import RuleExplainer
+from mindxlib.base.explanation import RuleExplanation
+from mindxlib.utils.features import FeatureBinarizer
+import warnings
 
 class subProblemSolver():
-    '''
+    """
     This class solve the problem
     |A\cap_{e\in S} e|-|B\cap_{e\in S} e|-lambda_0*(|C\cap_{e\in S} e|+lambda_1|S|)
     which equals to
     |\bar{B}\cup_{e\in S} \bar{e}|+lambda_0*|\bar{C}\cap_{e\in S} e|-|\bar{A}\cap_{e\in S} \bar{e}|-lambda_0*lambda_1|S|
-    '''
+    """
     def __init__(self,bitmap=None,patience_ratio=0.1,cc = 10):
         self.bitmap = bitmap
         self.last_rule = []
@@ -35,7 +38,7 @@ class subProblemSolver():
         self.feature_list = list(self.bitmap.keys())
         self.max_patience = self.patience_ratio*len(self.full_feature_list)
         self.full_set = full_set
-    def initial_solution_1(self,A,B,C,lambda_0,lambda_1,M=16,K=3):
+    def _initial_solution_1(self,A,B,C,lambda_0,lambda_1,M=16,K=3): #TODO: M and  K not used.
         init_rule = []
         bit_list = [self.bitmap[feature] for feature in init_rule]
         if len(bit_list)<1:
@@ -62,7 +65,7 @@ class subProblemSolver():
                 break
         return init_rule
     
-    def local_search(self,A,B,C,lambda_0,lambda_1):
+    def _local_search(self,A,B,C,lambda_0,lambda_1):
         insert_improve = True
         delete_improve = True
         replace_improve = True
@@ -134,7 +137,7 @@ class subProblemSolver():
                         delete_improve = True
     
 
-    def get_permutation(self,A,B,C,lambda_0,lambda_1):
+    def _get_permutation(self,A,B,C,lambda_0,lambda_1,seed=None):
         permutation = {}
         unused_feature = [feature for feature in self.feature_list if feature not in self.last_rule]
         # rand perm
@@ -184,6 +187,8 @@ class subProblemSolver():
         score_ratio_list_2 = sorted(score_ratio_list_2,key=lambda x:x[-1],reverse=True)
         K = len(self.last_rule)
         N = len(self.feature_list)
+        if seed is not None:
+            np.random.seed(seed)
         perm_1 = np.random.permutation(K).tolist()
         perm_2 = np.random.permutation(N-K).tolist()
         permutation['random'] = [[self.last_rule[idx] for idx in perm_1],[unused_feature[idx] for idx in perm_2]]
@@ -193,10 +198,10 @@ class subProblemSolver():
         return permutation
  
  
-    def solve(self,A,B,C,lambda_0,lambda_1,lower_bound=None):
+    def _solve(self,A,B,C,lambda_0,lambda_1,lower_bound=None,seed=None):
         """
         This function maximize 
-               |A \cap x_1 \cap x_2 ...|-|B \cap x_1 \cap x_2 ...|-lambda_0(|C \cap x_1 \cap x_2 ...|+lambda_1 |X|)
+        |A \cap x_1 \cap x_2 ...|-|B \cap x_1 \cap x_2 ...|-lambda_0(|C \cap x_1 \cap x_2 ...|+lambda_1 |X|)
         using modmod method.
         """
         self.feature_list = []
@@ -209,7 +214,7 @@ class subProblemSolver():
         if len(self.feature_list)<1:
             return self.full_feature_list[0],-1e+15
 
-        self.last_rule = self.initial_solution_1(A,B,C,lambda_0,lambda_1)
+        self.last_rule = self._initial_solution_1(A,B,C,lambda_0,lambda_1)
         self.final_rule = []
         converge = False
         N = len(self.feature_list)
@@ -222,7 +227,7 @@ class subProblemSolver():
             score_list_2 = []
             # compute 2 lower bounds of first term
             final_gain = -1e+15
-            permutation = self.get_permutation(A,B,C,lambda_0,lambda_1)
+            permutation = self._get_permutation(A,B,C,lambda_0,lambda_1,seed=seed)
             for method_name,perm in permutation.items():
                 perm_1,perm_2 = perm
                 pre_include_B = B
@@ -309,7 +314,7 @@ class subProblemSolver():
                 patience = 0
                 self.last_rule = self.final_rule
                 unused_feature = [feature for feature in self.feature_list if feature not in self.last_rule]
-        self.local_search(A,B,C,lambda_0,lambda_1)
+        self._local_search(A,B,C,lambda_0,lambda_1)
 
         bit_list = [self.bitmap[feature] for feature in self.final_rule]
         if len(bit_list)>0:
@@ -320,17 +325,23 @@ class subProblemSolver():
             final_gain = len(A)-len(B)-lambda_0*len(C)
         return self.final_rule,final_gain
 
-class SSRL(RuleExplainerBase):
-    def __init__(self, model=None, data=None, lambda_1=1, distorted_step=10, cc=None, use_multi_pool=False):
+class SSRL(RuleExplainer):
+    def __init__(self, model=None, data=None, feature_prefix='f', lambda_1=1, distorted_step=10, cc=None, use_multi_pool=False, 
+                 binarize_features=True, categorical_features=[], num_thresh=9, negation=True):
         """Initialize SSRL rule explainer
         
         Args:
             model: Optional model to explain (not used in SSRL)
             data: Optional training data
+            feature_prefix: Prefix for feature names if data is numpy array (default 'f')
             lambda_1: Regularization parameter for rule length
             distorted_step: Number of distortion steps
             cc: Optional parameter for subproblem solver
             use_multi_pool: Whether to use multiprocessing
+            binarize_features: Whether to binarize features using FeatureBinarizer
+            categorical_features: List of categorical columns for binarization (only used if binarize_features=True)
+            num_thresh: Number of thresholds for binarizing numeric features (only used if binarize_features=True)
+            negation: Whether to include negations in binarized features (only used if binarize_features=True)
         """
         super().__init__(model, data)
         self.lambda_1 = lambda_1
@@ -339,12 +350,24 @@ class SSRL(RuleExplainerBase):
         self.last_rulelist = []
         self.rulelist = []
         self.full_set = None
+        self.feature_prefix = feature_prefix
         if cc is None:
             cc = 5*lambda_1
         self.subproblem_solver = subProblemSolver(cc=cc)
         self.distorted_step = distorted_step
         self.use_multi_pool = use_multi_pool
         self.defaultRuleName = None
+        
+        # Feature binarization settings
+        self.binarize_features = binarize_features
+        self.feature_binarizer = None
+        if binarize_features:
+            self.feature_binarizer = FeatureBinarizer(
+                categorical_features=categorical_features,
+                num_thresh=num_thresh,
+                negation=negation
+            )
+
     def get_bitmap(self,dataset,label_column,feature_columns):
         self.feature_bitmap_dict = {}
         self.label_bitmap_dict = {}
@@ -399,7 +422,7 @@ class SSRL(RuleExplainerBase):
                 effect = BitMap.difference_cardinality(rule['covered'],BitMap.union(*cover_list))
         return effect+self.lambda_1*rule['length']
         
-    def evaluate_ori_gain(self,default_rule,rule_list=None,lambda_1=None,default_rule_weight=None):
+    def _evaluate_ori_gain(self,default_rule,rule_list=None,lambda_1=None,default_rule_weight=None):
         if rule_list is None:
             rule_list = self.rulelist
         gain = -1e+15
@@ -422,7 +445,7 @@ class SSRL(RuleExplainerBase):
         
         return gain
     
-    def insert_ele_w_position(self,mode,default_rule,position):
+    def _insert_ele_w_position(self,mode,default_rule,position,seed=None):
         optimal_rulelist = []
         max_gain_insert = 0
         N = len(self.current_rulelist)
@@ -459,16 +482,16 @@ class SSRL(RuleExplainerBase):
             B = BitMap.difference(post_correct_cls,pre_covered)
             if mode == 0:
                 C = default_rule['correct_classified']
-                rule,gain = self.subproblem_solver.solve(A=A,B=B,C=C,lambda_0=self.default_rule_weight,\
+                rule,gain = self.subproblem_solver._solve(A=A,B=B,C=C,lambda_0=self.default_rule_weight,\
                                                          lambda_1=self.lambda_1,\
-                                                         lower_bound=max_gain_insert)
+                                                         lower_bound=max_gain_insert,seed=seed) 
             else:
                 cover_list = [rule_1['covered'] for rule_1 in self.last_rulelist]
                 cover_list.append(default_rule['miss_classified'])
                 C = BitMap.difference(self.full_set,BitMap.union(*cover_list))
-                rule,gain = self.subproblem_solver.solve(A=A,B=B,C=C,lambda_0=self.default_rule_weight,\
+                rule,gain = self.subproblem_solver._solve(A=A,B=B,C=C,lambda_0=self.default_rule_weight,\
                                                          lambda_1=self.lambda_1,\
-                                                         lower_bound=max_gain_insert)
+                                                         lower_bound=max_gain_insert,seed=seed)
             if gain > max_gain_insert:
                 max_gain_insert = gain
                 rule_info = {}
@@ -484,36 +507,37 @@ class SSRL(RuleExplainerBase):
                 optimal_rulelist.append(rule_info)
                 optimal_rulelist.extend(pos_rulelist)
         return max_gain_insert,optimal_rulelist
-    def insert_element(self,mode,default_rule):
+    
+    def _insert_element(self,mode,default_rule):
         improved = False
         N = len(self.current_rulelist)
         if self.use_multi_pool:
             arg_list = [(mode,default_rule,idx) for idx in range(N+1)]
             pool = Pool()
-            insert_results = pool.starmap(self.insert_ele_w_position, arg_list)
+            insert_results = pool.starmap(self._insert_ele_w_position, arg_list)
             pool.close()
             pool.join()
         else:
             insert_results = []
             for ii in range(N+1):
-                insert_results.append(self.insert_ele_w_position(mode,default_rule,ii))
+                insert_results.append(self._insert_ele_w_position(mode,default_rule,ii))
         sort_results = sorted(insert_results,key=lambda x:x[0],reverse=True)
         if sort_results[0][0]>1e-5:
             self.current_rulelist = sort_results[0][1]
             improved = True
         return improved
         
-    def delete_element(self,default_rule):
+    def _delete_element(self,default_rule):
         improved = False
         all_removed = False
         while not all_removed:
-            current_gain = self.evaluate_ori_gain(default_rule)
+            current_gain = self._evaluate_ori_gain(default_rule)
             max_gain = current_gain
             N = len(self.rulelist)
             for idx in range(N):
                 new_rulelist = [self.rulelist[idx_1] for idx_1 in range(idx)]
                 new_rulelist.extend([self.rulelist[idx_1] for idx_1 in range(idx+1,N)])
-                new_gain = self.evaluate_ori_gain(default_rule,rule_list=new_rulelist)
+                new_gain = self._evaluate_ori_gain(default_rule,rule_list=new_rulelist)
                 if new_gain>max_gain+1e-5:
                     max_gain = new_gain
                     optimal_rulelist = new_rulelist
@@ -524,7 +548,7 @@ class SSRL(RuleExplainerBase):
                 all_removed = True
         return improved
     
-    def replace_element(self,default_rule):
+    def _replace_element(self,default_rule,seed=None):
         improved = False
         N = len(self.rulelist)
         optimal_rulelist = []
@@ -548,9 +572,9 @@ class SSRL(RuleExplainerBase):
                 A = BitMap.difference(label_bitmap,pre_covered)
                 if len(A)<self.default_rule_weight*self.lambda_1:
                     continue
-                rule,gain = self.subproblem_solver.solve(A=A,B=B,C=C,lambda_0=self.default_rule_weight,\
+                rule,gain = self.subproblem_solver._solve(A=A,B=B,C=C,lambda_0=self.default_rule_weight,\
                                                          lambda_1=self.lambda_1,\
-                                                         lower_bound = max_gain)
+                                                         lower_bound = max_gain,seed=seed)
                 if gain>max_gain:
                     max_gain = gain
                     new_rule = []
@@ -575,9 +599,9 @@ class SSRL(RuleExplainerBase):
 
         return improved
     
-    def exchange_elements(self,default_rule):
+    def _exchange_elements(self,default_rule):
         improved = False
-        current_gain = self.evaluate_ori_gain(default_rule)
+        current_gain = self._evaluate_ori_gain(default_rule)
         N = len(self.rulelist)
         for idx_i in range(N-1):
             for idx_j in range(idx_i+1,N):
@@ -586,7 +610,7 @@ class SSRL(RuleExplainerBase):
                 new_rulelist.extend([self.rulelist[idx_1] for idx_1 in range(idx_i+1,idx_j)])
                 new_rulelist.append(self.rulelist[idx_i])
                 new_rulelist.extend([self.rulelist[idx_1] for idx_1 in range(idx_j+1,N)])
-                new_gain = self.evaluate_ori_gain(default_rule,rule_list=new_rulelist)
+                new_gain = self._evaluate_ori_gain(default_rule,rule_list=new_rulelist)
                 if new_gain>current_gain+1e-5:
                     current_gain = new_gain
                     self.rulelist = new_rulelist
@@ -594,7 +618,7 @@ class SSRL(RuleExplainerBase):
         return improved
     
     
-    def sovle_approx_func(self,default_rule):
+    def _sovle_approx_func(self,default_rule):
         self.last_rulelist = []
         iter_1 = 0
         for feature,feature_bitmap in self.feature_bitmap_dict.items():
@@ -618,15 +642,15 @@ class SSRL(RuleExplainerBase):
                 self.current_rulelist = []
                 for ii in range(self.distorted_step):
                     self.default_rule_weight = (1-1/self.distorted_step)**(-self.distorted_step+ii+1)
-                    improve = self.insert_element(mode,default_rule)
+                    # improve = self._insert_element(mode,default_rule)
 
                 self.default_rule_weight = 1
 
                 for ii in range(30):                    
-                    insert_improve = self.insert_element(mode,default_rule)
+                    insert_improve = self._insert_element(mode,default_rule)
                     if not insert_improve:
                         break
-                gain = self.evaluate_ori_gain(default_rule,rule_list=self.current_rulelist)
+                gain = self._evaluate_ori_gain(default_rule,rule_list=self.current_rulelist)
                 if gain>max_gain:
                     self.rulelist = self.current_rulelist
                     max_gain = gain
@@ -641,166 +665,151 @@ class SSRL(RuleExplainerBase):
         return max_gain, self.rulelist
     
     
-    def local_search(self,default_rule):
+    def _local_search(self,default_rule):
         delete_improved = True
         exchange_improved = True
         replace_improved = True
         while delete_improved or exchange_improved or replace_improved:
-            exchange_improved = self.exchange_elements(default_rule)
-            replace_improved = self.replace_element(default_rule)
-            delete_improved = self.delete_element(default_rule)
-            gain = self.evaluate_ori_gain(default_rule)
-            cl_gain = self.evaluate_ori_gain(default_rule,lambda_1=0)
+            exchange_improved = self._exchange_elements(default_rule)
+            replace_improved = self._replace_element(default_rule)
+            delete_improved = self._delete_element(default_rule)
+            gain = self._evaluate_ori_gain(default_rule)
+            # cl_gain = self._evaluate_ori_gain(default_rule,lambda_1=0)
             
         return gain, self.rulelist
 
-    def fit(self, X, y, defaultRuleName=None):
-        """Fit the rule list (internal implementation)
         
-        This method contains the original fit logic but is called by explain()
+    def _process_input_data(self, X, y=None, is_fit = False):
+        """Process input data into standardized format
+        
+        Args:
+            X: Input features (DataFrame, ndarray)
+            y: Target labels (DataFrame, Series, ndarray)
+            
+        Returns:
+            tuple: (dataset, feature_columns, label_column)
+                - dataset: Combined DataFrame of features and labels
+                - feature_columns: List of feature column names
+                - label_column: Name of label column
         """
-        if isinstance(X,pd.DataFrame) & isinstance(y,pd.DataFrame):
-            feature_columns = list(X.columns)
+        # Convert numpy arrays to pandas
+        if isinstance(X, np.ndarray):
+            X = pd.DataFrame(X, columns=[f'{self.feature_prefix}{i}' for i in range(X.shape[1])])
+        if isinstance(y, np.ndarray):
+            if len(y.shape) > 1 and y.shape[1] != 1 and y.shape[0] != 1:
+                raise ValueError(f'Ambiguous label column! Label array has shape {y.shape}')
+            y = pd.Series(y.reshape(-1), name='label')
+
+        if not isinstance(X, pd.DataFrame):
+            raise ValueError('X must be DataFrame or ndarray')
+
+        # Binarize features if enabled
+        if self.binarize_features:
+            if is_fit:
+                self.feature_binarizer.fit(X)
+            X = self.feature_binarizer.transform(X)
+            X.columns = [' '.join(col).strip() for col in X.columns.values]
+
+        feature_columns = list(X.columns)
+
+        if y is None:
+            label_column = None
+        elif isinstance(y, pd.DataFrame):
             label_column = list(y.columns)
-            if len(label_column)>1:
-                raise ValueError('Ambiguous label column!')
+            if len(label_column) > 1:
+                warnings.warn(f'Multiple label columns found ({len(label_column)} columns). Using first column.')
             label_column = label_column[0]
-            dataset = pd.concat((X,y),axis=1)
-        elif isinstance(X,pd.DataFrame) & isinstance(y,pd.Series):
-            feature_columns = list(X.columns)
+        elif isinstance(y, pd.Series):
             label_column = y.name
-            dataset = pd.concat((X,y.to_frame()),axis=1)
-        elif isinstance(X,np.ndarray) & isinstance(y,np.ndarray):
-            if len(y.shape)>1:
-                if y.shape[1]!=1:
-                    raise ValueError('Ambiguous label column!')
-                else:
-                    dataset = np.concatenate((X,y),axis=1)
-            else:
-                dataset = np.concatenate((X,y.reshape(-1,1)),axis=1)
-            N = X.shape[1]
-            feature_columns = ['f'+str(ii) for ii in range(N)]
-            label_column = 'label'
-            all_col = []
-            all_col.extend(feature_columns)
-            all_col.append(label_column)
-            dataset = pd.DataFrame(dataset,columns=all_col)
+            y = y.to_frame()
         else:
-            raise ValueError('Unsupport data type!')
+            raise ValueError('y must be DataFrame, Series or ndarray')
+
+        # Combine X and y
+        
+        
+        return X, y, feature_columns, label_column
+    
+    
+    def fit(self, X, y, defaultRuleName=None):
+        """Learn a rule list from data
+        
+        Args:
+            X: Input features (DataFrame or ndarray) 
+            y: Target labels (required, DataFrame, Series or ndarray)
+            defaultRuleName: Optional name for default rule (uses most frequent class if None)
+            
+        Returns:
+            RuleExplanation object containing the learned rules
+        """          
+        # Process input data
+        X, y, feature_columns, label_column = self._process_input_data(X, y, is_fit=True)
+        dataset = pd.concat((X, y), axis=1)
+        
+        # Store feature columns for prediction
+        self.feature_columns_ = feature_columns
+        
+        # Get default rule name
         label_counts = dataset[label_column].value_counts()
         if defaultRuleName is None:
             defaultRuleName = label_counts.argmax()
-        if defaultRuleName not in list(label_counts.index):
-            raise ValueError('The default label name is not in the data')
+            print(f"Using default rule name: {defaultRuleName} (most frequent class in data)")
+        elif defaultRuleName not in list(label_counts.index):
+            raise ValueError(f'defaultRuleName is not in the data: got {defaultRuleName}, expected one of {list(label_counts.index)}')
         self.defaultRuleName = defaultRuleName
-        M = dataset.shape[0]
-        default_rulelist = self.get_bitmap(dataset,label_column,feature_columns)
+
+        # Learn rules
+        default_rulelist = self.get_bitmap(dataset, label_column, feature_columns)
         best_gain = -1e+15
-        cl_gain_best = -1e+15
         best_rulelist = []
+        
         for default_rule in default_rulelist:
             if default_rule['label_name'] != defaultRuleName:
                 continue
-            self.sovle_approx_func(default_rule)
-            gain, rule_list = self.local_search(default_rule)
+            self._sovle_approx_func(default_rule)
+            gain, rule_list = self._local_search(default_rule)
             self.default_rule_weight = 1
-            cl_gain = self.evaluate_ori_gain(default_rule,lambda_1=0)
+            cl_gain = self._evaluate_ori_gain(default_rule, lambda_1=0)
+            
             if cl_gain > best_gain:
                 best_gain = cl_gain
                 best_rulelist = []
                 best_rulelist.extend(rule_list)
                 best_rulelist.append(default_rule)
-                cl_gain_best = self.evaluate_ori_gain(default_rule,rule_list=best_rulelist,lambda_1=0)
             elif (abs(cl_gain - best_gain)<1e-4) & (len(rule_list)<len(best_rulelist)-1):
                 best_gain = cl_gain
                 best_rulelist = []
                 best_rulelist.extend(rule_list)
                 best_rulelist.append(default_rule)
-                cl_gain_best = self.evaluate_ori_gain(default_rule,rule_list=best_rulelist,lambda_1=0)
-        self.rulelist = best_rulelist
-        return best_rulelist
-    
-    def print_rulelist(self):
-        N = len(self.rulelist)
-        if N > 1:
-            print('IF '+'&'.join(sorted(self.rulelist[0]['condition']))+' THEN '+str(self.rulelist[0]['label_name']))
-            for ii in range(1,N-1):
-                print('ELIF '+'&'.join(sorted(self.rulelist[ii]['condition']))+' THEN '+str(self.rulelist[ii]['label_name']))
-            print('ELSE '+str(self.defaultRuleName))
-        else:
-            print('IF THEN '+str(self.defaultRuleName))
-    
-    def explain(self, X, y=None, **kwargs):
-        """Generate rule-based explanations
-        
-        Args:
-            X: Input features to explain
-            y: Ground truth labels (required)
-            **kwargs: Additional parameters
-            
-        Returns:
-            RuleExplanation object containing the learned rules
-        """
-        # Validate inputs
-        X, y = self._validate_input(X, y)
-        
-        if y is None:
-            raise ValueError("Labels (y) are required for SSRL")
-            
-        # Fit the rules
-        self.fit(X, y, **kwargs)
-        
-        # Format rules for explanation
-        rule_texts = []
-        coverage = {}
-        
-        # Format each rule
-        for i, rule in enumerate(self.rulelist[:-1]):  # Skip default rule
-            if i == 0:
-                prefix = "IF "
-            else:
-                prefix = "ELIF "
                 
-            condition = '&'.join(sorted(rule['condition']))
-            prediction = str(rule['label_name'])
-            rule_text = f"{prefix}{condition} THEN {prediction}"
-            rule_texts.append(rule_text)
-            
-            # Store coverage
-            coverage[rule_text] = rule['covered']
-            
-        # Add default rule
-        rule_text = f"ELSE {str(self.defaultRuleName)}"
-        rule_texts.append(rule_text)
-        coverage[rule_text] = self.rulelist[-1]['covered']
-        
-        return self._format_explanation(X, rule_texts, coverage)
+        self.rulelist = best_rulelist
+        self.rules = RuleExplanation(rules=best_rulelist[:-1], default_rule=self.defaultRuleName)
 
-    def predict(self, data):
+    def predict(self, X):
         """Make predictions using learned rules
         
         Args:
-            data: Input features
+            X: Input features (DataFrame or ndarray)
             
         Returns:
-            Predictions from applying the rules
+            Predictions as 1D array or Series with shape (n_samples,)
         """
-        return_type = 'DataFrame'
-        if isinstance(data, np.ndarray):
-            data = pd.DataFrame(data, columns=['f'+str(ii) for ii in range(data.shape[1])])
-            return_type = 'ndarray'
-        elif not isinstance(data, pd.DataFrame):
-            raise ValueError('Unsupported data type!')
+        if not hasattr(self, 'rulelist') or not self.rulelist:
+            raise ValueError("Must call fit() before predict()")
             
-        result_df = pd.Series(np.zeros(data.shape[0], dtype='int'), index=data.index)
-        for idx, row in data.iterrows():
-            for idx_r in range(len(self.rulelist)):
-                if set(self.rulelist[idx_r]['condition']).issubset(set(row[row>0.5].index)):
-                    result_df.loc[idx] = self.rulelist[idx_r]['label_name']
+        # Process input data using same preprocessing as fit()
+        isndarray = isinstance(X, np.ndarray)
+        X, _, feature_columns, _ = self._process_input_data(X)
+        
+        # Make predictions
+        result = pd.Series(np.zeros(X.shape[0], dtype='int'), index=X.index)
+        for idx, row in X.iterrows():
+            prediction = self.defaultRuleName  # Default prediction
+            for rule in self.rulelist[:-1]:  # Skip default rule
+                if set(rule['condition']).issubset(set(row[row>0.5].index)):
+                    prediction = rule['label_name']
                     break
+            result.loc[idx] = prediction
                     
-        if return_type == 'DataFrame':
-            return result_df
-        else:
-            return result_df.values
+        return result.values if isndarray else result
     
