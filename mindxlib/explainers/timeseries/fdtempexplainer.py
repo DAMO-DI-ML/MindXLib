@@ -15,7 +15,7 @@ class FDTempExplainer(FeatureImportanceExplainer):
         Args:
             model: The model to explain
             data: Optional input data for initialization (array-like)
-                For time series: shape (n_samples, n_timesteps, n_features)
+                For time series: shape (n_samples, n_features, n_timesteps)
             **kwargs: Additional arguments for specific explainers
         """
         super().__init__(model, data, **kwargs)
@@ -36,18 +36,25 @@ class FDTempExplainer(FeatureImportanceExplainer):
         if isinstance(data, np.ndarray):
             data = torch.from_numpy(data).float()  # Convert NumPy array to PyTorch tensor
         
-        # Check if CUDA is available and adjust the device accordingly
-        if device.startswith("cuda:"):
+        # Validate and process the device argument
+        if device == "cpu":
+            target_device = torch.device("cpu")
+        elif device.startswith("cuda:"):
             if not torch.cuda.is_available():
                 print("No GPU available. Using CPU instead.")
-                device = "cpu"
+                target_device = torch.device("cpu")
             else:
-                gpu_id = int(device.split(":")[1])  # Extract GPU ID
-                device = torch.device(f"cuda:{gpu_id}")  # Create a device object
+                try:
+                    gpu_id = int(device.split(":")[1])  # Extract GPU ID
+                    target_device = torch.device(f"cuda:{gpu_id}")  # Create a device object
+                except ValueError:
+                    print(f"Invalid GPU ID in device specification: {device}. Using CPU instead.")
+                    target_device = torch.device("cpu")
         else:
-            device = torch.device(device)  # Default to CPU or cuda:0
+            print(f"Unsupported device specification: {device}. Using CPU instead.")
+            target_device = torch.device("cpu")
         
-        data = data.to(device)  # Move data to the specified device
+        data = data.to(target_device)  # Move data to the specified device
         return data
 
     def explain(self, data=None, only_last=True, baseline=None, patch_size=1, sample_num = 10, device="cpu", **kwargs):
@@ -101,12 +108,12 @@ class FDTempExplainer(FeatureImportanceExplainer):
             data = data.cpu().numpy()  # Convert to NumPy array if it's a PyTorch tensor
 
         if not isinstance(data, np.ndarray):
-            raise TypeError("Input data must be a NumPy array, a PyTorch tensor, or a Pandas DataFrame")
+            raise TypeError("Input data must be a NumPy array, a PyTorch tensor")
 
         if len(data.shape) != 3:
-            raise ValueError("Input data must be 3D with shape (n_samples, n_timesteps, n_features)")
+            raise ValueError("Input data must be 3D with shape (n_samples, n_features, n_timesteps)")
 
-        _, n_timesteps, _ = data.shape
+        _, _, n_timesteps = data.shape
         if n_timesteps % patch_size != 0:
             raise ValueError(f"patch_size ({patch_size}) must divide n_timesteps ({n_timesteps}) evenly")
         
@@ -114,10 +121,10 @@ class FDTempExplainer(FeatureImportanceExplainer):
 
 
     def _compute_attributions(self, data, patch_size, sample_num, only_last, **kwargs):
-        """Compute feature attributions
+        """Compute feature attributions3
         
         Args:
-            data: Time series data of shape (n_samples, n_timesteps, n_features) 
+            data: Time series data of shape (n_samples, n_features, n_timesteps) 
             patch_size: Size of the patches to use for attribution
             **kwargs: Additional parameters
             
@@ -126,7 +133,7 @@ class FDTempExplainer(FeatureImportanceExplainer):
                 main_effect: Individual feature contributions, whose shape is [n_samples, n_features, patch_num, model_outdim, n_timesteps]
                 interaction_effect: Higher-order interaction effects, whose shape is [n_samples, n_features, patch_num, patch_num, model_outdim, n_timesteps]
         """
-        n_samples, n_timesteps, n_features = data.shape
+        n_samples, n_features , n_timesteps = data.shape
         
 
         # Initialize arrays to store contribution values
@@ -135,7 +142,7 @@ class FDTempExplainer(FeatureImportanceExplainer):
 
         # Placeholder for generator and explainer initialization
     
-        generator = ImpVAE(num_features=1, seq_len=n_timesteps, device=self.device, layer_dim=[80, 64, 64, 32], BN_enable=True).to(self.device)
+        generator = ImpVAE(num_features=n_features, seq_len=n_timesteps, device=self.device, layer_dim=[80, 64, 64, 32], BN_enable=True).to(self.device)
         explainer = PatchAttributionTorch(
             func=self.model.predict,
             patch_size=patch_size,
@@ -157,10 +164,10 @@ class FDTempExplainer(FeatureImportanceExplainer):
             sample_interaction_effects = []
             for feature in range(n_features):
                 # Extract current sample and feature data
-                explained_x = data[sample, :, feature].reshape(1, -1)
-                
+                explained_x = data[sample, :, :]
+               
                 # Compute contributions
-                main_effect = explainer.attribute(explained_x, cared_fid=0, lambda_1=0)
+                main_effect = explainer.attribute(explained_x, cared_fid=feature, lambda_1=0)
                 interaction_effect = explainer.interaction_matrix.cpu().numpy()
                 
                 # Append contributions to current sample's lists

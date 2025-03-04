@@ -24,6 +24,7 @@ class res_block(nn.Module):
         self.BN_enable = BN_enable
         
     def forward(self, x):
+
         x = x.to(torch.float32)
         if self.BN_enable:
             return F.relu(self.bn(self.linear_layer(x))) + self.res_layer(x)
@@ -40,6 +41,7 @@ class ImpVAE(nn.Module):
         self.enc_latent_dims = layer_dim[-1]
         self.device = device 
         layers = []
+        
         layers.append(res_block(self.input_dims*2,layer_dim[0],BN_enable=False))
         for ii in range(len(layer_dim)-2):
             layers.append(res_block(layer_dim[ii],layer_dim[ii+1],BN_enable))
@@ -55,6 +57,7 @@ class ImpVAE(nn.Module):
     def forward(self, x, mask): # x: batch_size X num_features X seq_len
         x_flatten = torch.flatten(x, start_dim=1) # x_hat: batch_size X (num_features * seq_len)
         mask_flatten = torch.flatten(mask, start_dim=1)
+       
         z = self.encoder(torch.cat((x_flatten,mask_flatten),dim=-1))
         mu = z[:,:self.enc_latent_dims]
         sigma = z[:,self.enc_latent_dims:]
@@ -67,6 +70,7 @@ class ImpVAE(nn.Module):
         batch_size = x.shape[0]
         x_flatten = torch.flatten(x, start_dim=1) # x_hat: batch_size X (num_features * seq_len)
         mask_flatten = torch.flatten(mask, start_dim=1)
+
         z = self.encoder(torch.cat((x_flatten,mask_flatten),dim=-1))
         mu = z[:,:self.enc_latent_dims]
         sigma = z[:,self.enc_latent_dims:]
@@ -117,7 +121,7 @@ class PatchAttributionTorch():
         input: #samples X #feature X #seq_len
         output: #sample X #output
         """
-
+        
         return self.func(x)
 
     def model_predict_w_replace(self, x, cared_fid, replace_x):
@@ -140,6 +144,7 @@ class PatchAttributionTorch():
     def compute_interactions(self, x, cared_fid, time_step):
         interaction_matrix = None
         x_cared = x[cared_fid, :]
+
         generated_samples = {}
         KK = self.kk
         for ii in range(int(self.patch_num)):

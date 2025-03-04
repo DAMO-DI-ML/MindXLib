@@ -78,18 +78,18 @@ class LSTM_new_1(nn.Module):
 if __name__ == "__main__":
     print("Running tests for FDTempExplainer...")
     print("Note: The user must have defined a predict function in the model.")
-    
+
     # Specify devices
     cpu_device = "cpu"
     gpu_device = "cuda:1" if torch.cuda.is_available() else "cpu"
 
     # Simulate time series data in different formats
-    numpy_data = np.random.rand(5, 4, 2)  # 5 samples, 4 time steps, 2 features
+    n_samples, n_features, n_timesteps = 5, 2, 6
+    numpy_data = np.random.rand(n_samples, n_features, n_timesteps)  # 5 samples, 2 features, 6 time steps 
     tensor_data = torch.from_numpy(numpy_data).float()
 
     # Load the trained model
-    lstm = LSTM_new_1(input_dim=1, hidden_dim=120, output_dim=4, num_layers=3, task='classification')
-    lstm.load_state_dict(torch.load('/mnt/workspace/workgroup/workgroup/yitian/MindXLib/tests/test_explainers/test_model/lstm-LKA.pt'))
+    lstm = LSTM_new_1(input_dim=n_features, hidden_dim=120, output_dim=4, num_layers=3, task='classification')
 
     # Function to run explanation with specified parameters
 
