@@ -77,48 +77,68 @@ class LSTM_new_1(nn.Module):
 
 if __name__ == "__main__":
     print("Running tests for FDTempExplainer...")
-    print("sys.path", sys.path)
+    print("Note: The user must have defined a predict function in the model.")
+    
+    # Specify devices
+    cpu_device = "cpu"
+    gpu_device = "cuda:1" if torch.cuda.is_available() else "cpu"
 
-    # Specify device
-    device = "cuda:1"
-
-    # Simulate time series data (can be either np.array or torch.tensor)
-    data = np.random.rand(5, 50, 2)  # 100 samples, 50 time steps, 2 features
-    # data = torch.from_numpy(data)
+    # Simulate time series data in different formats
+    numpy_data = np.random.rand(5, 4, 2)  # 5 samples, 4 time steps, 2 features
+    tensor_data = torch.from_numpy(numpy_data).float()
 
     # Load the trained model
-    lstm = LSTM_new_1(input_dim=1, hidden_dim=120, output_dim=4, num_layers=3, task='classification').to(device)
+    lstm = LSTM_new_1(input_dim=1, hidden_dim=120, output_dim=4, num_layers=3, task='classification')
     lstm.load_state_dict(torch.load('/mnt/workspace/workgroup/workgroup/yitian/MindXLib/tests/test_explainers/test_model/lstm-LKA.pt'))
 
-    # Instantiate FDTempExplainer
-    explainer = FDTempExplainer(
-        model=lstm,
-        data=data
-    )
+    # Function to run explanation with specified parameters
 
-    # Call the explain method for explanation (for RNN models, only use the last time step's output)
-    explainer.explain(
-        args='only_last',
-        patch_size=5,
-        test_size=0.2,
-        random_state=42,
-        device=device
-    )
+    def run_explanation(data, only_last, device):
+        explainer = FDTempExplainer(
+            model=lstm.to(device)
+        )      
+        '''
+        data: Input data to explain (array-like)
+        only_last: For RNNs, if True, use only the result from the last time step for explanation.
+                Otherwise, use results from all time steps. Default is True.
+        patch_size: Size of the patches to use for attribution (must divide n_timesteps)
+        sample_num: The number of samples used to compute the expected value.
+        device: Target device for computation ("cpu" or "cuda:<gpu_id>")
+        '''
+        explainer.explain(
+            data=data,
+            only_last=only_last,
+            patch_size=2,
+            device=device
+        )
+        print(f"Data shape (only_last={only_last}, device={device}): {explainer.data.shape}")
+        print(f"Main effects shape: {explainer.attribution_results['main_effect'].shape}")
+        print(f"Interaction effects shape: {explainer.attribution_results['interaction_effect'].shape}")
 
-    # Call the explain method for explanation (for RNN models, use all time steps' output)
-    # explainer.explain(
-    #     args='None',
-    #     patch_size=5,
-    #     test_size=0.2,
-    #     random_state=42,
-    #     device=device
-    # )
+    # Test cases
+    print("\nTest Case 1: Data is NumPy array, only_last=True, device=CPU")
+    run_explanation(numpy_data, only_last=True, device=cpu_device)
 
-    # Print the shape of the dataset used for explanation
-    print("Data shape:", explainer.data.shape)
+    print("\nTest Case 2: Data is NumPy array, only_last=False, device=CPU")
+    run_explanation(numpy_data, only_last=False, device=cpu_device)
 
-    # Get main effects and interaction effects
-    print("Main effects shape:", explainer.attribution_results['main_effect'].shape)
-    print("Interaction effects shape:", explainer.attribution_results['interaction_effect'].shape)
+    print("\nTest Case 3: Data is Tensor, only_last=True, device=CPU")
+    run_explanation(tensor_data, only_last=True, device=cpu_device)
+
+    print("\nTest Case 4: Data is Tensor, only_last=False, device=CPU")
+    run_explanation(tensor_data, only_last=False, device=cpu_device)
+
+    if torch.cuda.is_available():
+        print("\nTest Case 5: Data is NumPy array, only_last=True, device=GPU")
+        run_explanation(numpy_data, only_last=True, device=gpu_device)
+
+        print("\nTest Case 6: Data is NumPy array, only_last=False, device=GPU")
+        run_explanation(numpy_data, only_last=False, device=gpu_device)
+
+        print("\nTest Case 7: Data is Tensor, only_last=True, device=GPU")
+        run_explanation(tensor_data, only_last=True, device=gpu_device)
+
+        print("\nTest Case 8: Data is Tensor, only_last=False, device=GPU")
+        run_explanation(tensor_data, only_last=False, device=gpu_device)
 
     print("Tests completed successfully!")

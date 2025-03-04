@@ -80,7 +80,7 @@ class PatchAttributionTorch():
     This class provides an explanation method for time series.
     The input of model is defined in function 'model_predict', the input 
     """
-    def __init__(self, func, patch_size, x_size, is_numpy_model, generator, device, args=None, 
+    def __init__(self, func, patch_size, x_size, is_numpy_model, generator, device, only_last, 
                  sample_num=10, lambda_1=0, kk=1e+15):
         self.func = func  # Function to be explained, expected input format: batch_size X num_features X seq_len
         self.output_dim = None
@@ -93,7 +93,7 @@ class PatchAttributionTorch():
         self.sample_num = sample_num  # Number of samples used when calculating expectation
         self.lambda_1 = lambda_1
         self.kk = kk
-        self.args = args
+        self.only_last = only_last
         
     def generate_samples(self, x, cared_fid, ii, jj):
         self.generator.eval()
@@ -205,16 +205,15 @@ class PatchAttributionTorch():
     def compute_interactions_with_timesteps(self, x, cared_fid, time_steps):
         interaction_matrices_per_timestep = []
         
-        if self.args == 'only_last':
+        if self.only_last:
             all_time_steps_interaction_matrix = self.compute_interactions(x, cared_fid, time_step=-1)
         else:
 
             for t in range(time_steps):
-                # 调用修改后的compute_interactions方法并传入time_step参数
+
                 interaction_matrix_t = self.compute_interactions(x, cared_fid, time_step=t)
                 interaction_matrices_per_timestep.append(interaction_matrix_t)
             
-            # 在所有时间步后，沿最后一个维度（即时间维度）拼接这些张量
             all_time_steps_interaction_matrix = torch.stack(interaction_matrices_per_timestep, dim=-1).to(self.device)
             
             
@@ -239,7 +238,7 @@ class PatchAttributionTorch():
             # print("interaction_matrix shape",self.interaction_matrix.shape)
     
 
-        if self.args == 'only_last':
+        if self.only_last:
             attributions = torch.zeros((int(self.patch_num), self.interaction_matrix.shape[-1]))
             for ii in range(int(self.patch_num)):
                 for jj in range(ii, int(self.patch_num)):
