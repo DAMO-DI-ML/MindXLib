@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
+from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR
 import numpy as np
 import pandas as pd
 import torch.nn.functional as F
@@ -13,6 +14,24 @@ import torch.utils.data as Data
 import time
 
 
+class Dataset_Explain(Dataset):
+    def __init__(self, data) -> None: # data: numpy array, #sample X #feature X seq_len
+        super(Dataset_Explain,self).__init__()
+        self.num_samples, self.num_features, self.seq_len = data.shape
+        self.data_x = data
+        self.data_y = data
+
+    def __getitem__(self, index):
+        seq_x = self.data_x[index,:,:]
+        seq_y = self.data_y[index,:,:]
+        mask = torch.zeros((self.num_features,self.seq_len)).to(seq_y.device)
+        pos = torch.sort(torch.randperm(self.seq_len+1)[:2])[0]
+        mask[torch.randperm(self.num_features)[:self.num_features//2+1],pos[0]:pos[1]] = 1
+
+        return seq_x, mask, seq_y
+
+    def __len__(self):
+        return self.num_samples
 
 
 class res_block(nn.Module):
@@ -77,7 +96,30 @@ class ImpVAE(nn.Module):
         z_sample = mu + sigma.repeat_interleave(num_sample,dim=0)*torch.randn(batch_size*num_sample,self.enc_latent_dims).to(self.device)
         x_hat = self.decoder(z_sample).reshape(-1,self.num_features,self.seq_len)
         return x_hat
-    
+
+    def train_model(self,train_dataset,lr=0.01,batch_size=320,n_epochs=500,vae_train_print=False):
+        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        scheduler = StepLR(optimizer, step_size=100, gamma=0.7)
+        for epoch in range(n_epochs):
+            train_loss = 0.0
+            self.train()
+            for step,(X, mask, Y) in enumerate(train_loader):
+                X_hat, mu, sigma = self.forward(X*mask, mask)
+                recons_loss = torch.mean(torch.mean(torch.sum((Y - X_hat) ** 2, dim=-1), dim=-1),dim=0)
+                reg_loss = torch.mean(torch.mean(torch.sum(((Y - X_hat)*mask) ** 2, dim=-1), dim=-1),dim=0)
+                reg = torch.mean(torch.mean(mu ** 2 , dim=0),dim=0) + torch.mean(torch.mean(torch.abs(sigma)** 2, dim=0),dim=0) - torch.mean(torch.mean(torch.log(sigma**2+1e-10), dim=0),dim=0)
+                loss = recons_loss + 1*reg + 0.5*reg_loss
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.parameters(), 0.1)
+                optimizer.step()
+                train_loss += recons_loss.item()*X.shape[0]
+            scheduler.step()
+            train_loss = train_loss
+            if  vae_train_print:
+                print(f'Epoch: {epoch+1} Train mse = {np.round(train_loss,4)}')
+        
 
 class PatchAttributionTorch():
     """
