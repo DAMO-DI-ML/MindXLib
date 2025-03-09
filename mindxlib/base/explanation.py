@@ -3,12 +3,12 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 class Explanation(ABC):
-    def __init__(self):
+    def __init__(self, data):
         """base class for all explanation results
         Args:
             data: original input data (unified to DataFrame, time series expanded to multiple columns)
         """
-        # self.data = data
+        self.data = data
 
     @abstractmethod
     def validate(self):
@@ -54,14 +54,16 @@ class RuleExplanation(Explanation):
 class FeatureImportanceExplanation(Explanation):
     """Class for feature importance explanations."""
     
-    def __init__(self, feature_importance: Dict[str, float]):
+    def __init__(self, data, feature_importance: Dict[str, float]):
         """Initialize feature importance explanation.
         
         Args:
             feature_importance (Dict[str, float]): Dictionary mapping feature names to importance scores
         """
-        super().__init__()
+        super().__init__(data)
         
+        self.data = data
+
         if not isinstance(feature_importance, dict):
             feature_importance = {"feature_importance": feature_importance}
         self.feature_importance = feature_importance

@@ -1,3 +1,4 @@
+import numpy as np
 from lime import lime_image, lime_text, lime_tabular
 from mindxlib.base.explainer import FeatureImportanceExplainer
 
@@ -17,4 +18,24 @@ class LimeImageExplainer(LimeExplainer):
     pass
 
 class LimeTabularExplainer(LimeExplainer):
-    pass
+    def __init__(self, model, *argv, **kwargs):
+        """
+        Initialize lime Tabular Explainer object
+        """
+        super(LimeTabularExplainer, self).__init__(model)
+    
+    def _initial_baseline(self, data, baseline):
+
+        return baseline
+    
+    def _compute_attributions(self, datas, baseline, *argv, **kwargs):
+        explainer = lime_tabular.LimeTabularExplainer(training_data=baseline, *argv, **kwargs)
+
+        batch_attributions = []
+        for data in datas:
+            attribution = explainer.explain_instance(data, self.model)
+            batch_attributions.append(attribution)
+        
+        return np.array(batch_attributions)
+
+
