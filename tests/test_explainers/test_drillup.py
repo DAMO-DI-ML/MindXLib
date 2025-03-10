@@ -54,7 +54,7 @@ def test_drillup_with_numpy():
 
 
 
-def test_rulelset_with_dataframe():
+def test_drillup_with_dataframe():
     # 创建一个简单的测试数据集
     data = {
         'age': ['young', 'middle-aged', 'old', 'middle-aged', 'old'],
@@ -82,7 +82,32 @@ def test_rulelset_with_dataframe():
     # 对新数据进行预测
     predictions = drillup.predict(test_df)
     print("Predictions:", predictions.tolist())
+
+
+def test_drillup_from_csv():
+    data = pd.read_csv('dataset/tic_tac_toe.csv', header=None)
+    y = data.iloc[:,-1]
+    print(y.value_counts())
+    y = y.map({'negative': 0, 'positive': 1})
+    X = data.iloc[:,:-1]
+    drillup = DrillUp(label_col='label', label_val=1, min_dim_val_cnt=1, sup_ratio=0.2)
+    drillup.fit(X, y)
     
+    drillup.show()
+    predictions = drillup.predict(X)
+    acc = np.sum(1.0*(predictions.values==y.values))/y.shape[0]
+    print(f'The training acc is {acc:.2f}')
+    '''
+    IF 2!=o AND 4!=o AND 6!=o, THEN 1
+    ELIF 0!=o AND 4!=o AND 8!=o, THEN 1
+    ELIF 1!=o AND 2!=o AND 3!=o AND 8!=o, THEN 1
+    ELIF 1!=o AND 2==o AND 4!=o AND 5!=o, THEN 1
+    ELIF 0!=o AND 2!=o AND 3!=o AND 7!=o, THEN 1
+    ELIF 4==o AND 5!=o AND 6!=o AND 7!=o AND 8!=o, THEN 1
+    ELIF 0!=o AND 5!=o AND 6!=o AND 7!=o, THEN 1
+    ELSE 0
+    The training acc is 0.91
+    '''
 
 if __name__ == "__main__":
-    test_rulelset_with_dataframe()
+    test_drillup_from_csv()

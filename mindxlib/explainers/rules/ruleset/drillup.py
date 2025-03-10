@@ -1151,11 +1151,10 @@ class DrillUp(RuleExplainer):
 
     def fit(self, X, y, X_columns=None, y_column=None,default_label=None):
         self.X_columns = X_columns
-
         X = self._ensure_dataframe(X,columns=self.X_columns)
         y = self._ensure_dataframe(y,columns=y_column if y_column else ['label'])
 
-
+        
         label_counts = y.value_counts()
         if default_label is None:
             default_label = label_counts.idxmax()
@@ -1404,8 +1403,15 @@ class DrillUp(RuleExplainer):
         elif isinstance(X, pd.Series):
             logging.info("Converting pandas Series to DataFrame.")
             if columns is not None and isinstance(columns, list) and len(columns) == 1:
-                return pd.DataFrame(X, columns=columns)
+                print(1)
+                df = pd.DataFrame(X)
+                df.columns = columns
+                return df
             else:
-                return pd.DataFrame(X, columns=['0'] if columns is None else columns)
+                print(2)
+                columns=['0'] if columns is None else columns
+                df = pd.DataFrame(X)
+                df.columns = columns
+                return df
         else:
             raise TypeError("Input data must be either a numpy array, pandas DataFrame, or pandas Series.")
