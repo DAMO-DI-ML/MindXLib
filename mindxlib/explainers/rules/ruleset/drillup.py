@@ -1244,7 +1244,6 @@ class DrillUp(RuleExplainer):
         self.output_rule = []
         for each in self.cl_slim_res:
             self.output_rule.append(each[0])
-        print(self.output_rule)
         self.rules = DrilluptExplanation(rules=self.output_rule, default_rule=self.default_label)
         return self
 
