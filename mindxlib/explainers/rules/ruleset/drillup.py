@@ -1403,12 +1403,10 @@ class DrillUp(RuleExplainer):
         elif isinstance(X, pd.Series):
             logging.info("Converting pandas Series to DataFrame.")
             if columns is not None and isinstance(columns, list) and len(columns) == 1:
-                print(1)
                 df = pd.DataFrame(X)
                 df.columns = columns
                 return df
             else:
-                print(2)
                 columns=['0'] if columns is None else columns
                 df = pd.DataFrame(X)
                 df.columns = columns
