@@ -566,8 +566,21 @@ class Diver():
         self.disable_log = disable_log
         self.cache_ind = cache_ind
 
-    def fit(self, X, y):
-        data_df = pd.concat((X, y.to_frame()), axis=1)
+    def fit(self, X, y, X_columns=None, y_column=None,default_label=None):
+        self.X_columns = X_columns
+        X = self._ensure_dataframe(X,columns=self.X_columns)
+        y = self._ensure_dataframe(y,columns=y_column if y_column else ['label'])
+
+
+        label_counts = y.value_counts()
+        if default_label is None:
+            default_label = label_counts.idxmax()
+            print(f"Using default rule name: {default_label} (most frequent class in data)")
+        elif default_label not in list(label_counts.index):
+            raise ValueError(f'default_label is not in the data: got {default_label}, expected one of {list(label_counts.index)}')
+        self.default_label = default_label
+
+        data_df = pd.concat((X, y), axis=1)
         label_cnt = data_df[self.label_col].value_counts()
         label_info = [(label_cnt.index[k], label_val) for (k, label_val) in enumerate(label_cnt)]
         sort_label_info = sorted(label_info, key=lambda x: x[1])
@@ -601,7 +614,30 @@ class Diver():
         # bacc = balanced_accuracy_score(y_test, ypredict_diver)
         # acc = accuracy_score(y_test, ypredict_diver)
 
-
+    def _ensure_dataframe(self, X, columns=None):
+        """
+        Ensure the input is a pandas DataFrame.
+        
+        Parameters:
+            X (numpy.ndarray, pandas.DataFrame, or pandas.Series): Input data.
+            columns (list of str, optional): Column names for the DataFrame if X is a numpy array or Series.
+            
+        Returns:
+            pandas.DataFrame: The input data as a DataFrame.
+        """
+        if isinstance(X, np.ndarray):
+            logging.info("Converting numpy array to DataFrame.")
+            return pd.DataFrame(X, columns=columns)  # 如果columns为None，Pandas会自动生成默认列名
+        elif isinstance(X, pd.DataFrame):
+            return X
+        elif isinstance(X, pd.Series):
+            logging.info("Converting pandas Series to DataFrame.")
+            if columns is not None and isinstance(columns, list) and len(columns) == 1:
+                return pd.DataFrame(X, columns=columns)
+            else:
+                return pd.DataFrame(X, columns=['0'] if columns is None else columns)
+        else:
+            raise TypeError("Input data must be either a numpy array, pandas DataFrame, or pandas Series.")
     # core drill up procedure
     def drillUp(self, c_df, label_col, label_val, dim_list,
                 sup_ratio,

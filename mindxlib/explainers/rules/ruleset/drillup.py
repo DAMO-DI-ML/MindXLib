@@ -13,6 +13,46 @@ from pyroaring import BitMap
 import numpy as np
 import time
 import ast
+from mindxlib.base.explainer import RuleExplainer
+from mindxlib.base.explanation import RuleExplanation
+
+
+class DrilluptExplanation(RuleExplanation):
+    def __init__(self, rules, default_rule=0):
+        self.rules = rules  # 规则列表，每个规则是一个包含多个 'feature:value' 字符串的列表
+        self.default_rule = default_rule  # 默认规则
+
+    def show(self):
+        """Override show method to print rules in custom format."""
+        N = len(self.rules)
+        if N > 0:
+            # 输出第一个规则
+            print(f"IF {self._format_conditions(self.rules[0])}, THEN 1")
+            # 输出其余的规则
+            for ii in range(1, N):
+                print(f"ELIF {self._format_conditions(self.rules[ii])}, THEN 1")
+            # 输出默认规则
+            print("ELSE 0")
+        else:
+            # 如果没有规则，仅输出默认规则
+            print(f"IF THEN {self.default_rule}")
+
+    def _format_conditions(self, conditions):
+        """
+        Helper method to format the conditions of a rule into a readable string.
+        
+        Parameters:
+            conditions (list of str): List of 'feature:value' strings.
+            
+        Returns:
+            str: Formatted condition string.
+        """
+        formatted_conditions = []
+        for condition in conditions:
+            feature, value = condition.split(':')
+            formatted_conditions.append(f"{feature}=={value}")
+        return " AND ".join(formatted_conditions)
+
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -41,6 +81,8 @@ def detect_bad_cols(df, dim_list):
             max_ratio = max_cnt/num
             if max_ratio > 0.95:
                 bad_cols.append(col)
+
+
     return bad_cols
 
 
@@ -128,12 +170,16 @@ def preprocess(df, label_col, label_val, dim_list, min_dim_val_cnt):
     df['count'] = 1
 
     # step 0.c detect bad columns, remove from dim list
+
     bad_col = detect_bad_cols(df, dim_list)
-    logging.info("Bad cols are {}".format(','.join(bad_col)))
+    logging.info("Bad cols are {}".format(','.join(str(bad_col))))
     dim_list = [i for i in dim_list if i not in bad_col]
     logging.info("After bad_col detect, dim_list is {}".format(
-                 ','.join(dim_list)))
+                 ','.join(str(dim_list))))
 
+    if len(dim_list) < 1:
+        raise ValueError("All columns have been detected as bad columns.")
+    
     df = fill_miss(df, dim_list)
     logging.info("fill missing values!")
 
@@ -158,7 +204,7 @@ def preprocess(df, label_col, label_val, dim_list, min_dim_val_cnt):
     c_df['dim_list'] = ''
     c_df.loc[0, 'dim_list'] = str(dim_list)
 
-    return c_df
+    return c_df, dim_list
 
 # split the data, row data with label_col == label_val as outlier
 # the rest are inliers
@@ -1075,7 +1121,7 @@ class cl_fptree:
         for p in p_list:
             self.add_a_pattern(p)
 
-class DrillUp():
+class DrillUp(RuleExplainer):
     def __init__(self,label_col, label_val, dim_list=None,
                 min_dim_val_cnt=5, sup_ratio=0.01, out_num=100, jcd_limit=0.75,
                 min_pat_len=1, score_gap=1.0, score_type='risk'):
@@ -1103,12 +1149,27 @@ class DrillUp():
         self.score_gap = score_gap
         self.score_type = score_type
 
-    def fit(self, X, y):
-        data_df = pd.concat((X,y.to_frame()),axis=1)
+    def fit(self, X, y, X_columns=None, y_column=None,default_label=None):
+        self.X_columns = X_columns
+
+        X = self._ensure_dataframe(X,columns=self.X_columns)
+        y = self._ensure_dataframe(y,columns=y_column if y_column else ['label'])
+
+
+        label_counts = y.value_counts()
+        if default_label is None:
+            default_label = label_counts.idxmax()
+            print(f"Using default rule name: {default_label} (most frequent class in data)")
+        elif default_label not in list(label_counts.index):
+            raise ValueError(f'default_label is not in the data: got {default_label}, expected one of {list(label_counts.index)}')
+        self.default_label = default_label
+
+        data_df = pd.concat((X,y),axis=1)
         if self.dim_list is None:
             self.dim_list = list(X.columns)
+        
+        c_df, self.dim_list= preprocess(data_df,self.label_col,self.label_val,self.dim_list,self.min_dim_val_cnt)
 
-        c_df = preprocess(data_df,self.label_col,self.label_val,self.dim_list,self.min_dim_val_cnt)
         c_df['count'] = c_df['count'].astype(float)
 
         # step 1. split the data
@@ -1184,9 +1245,13 @@ class DrillUp():
         self.output_rule = []
         for each in self.cl_slim_res:
             self.output_rule.append(each[0])
+
+        self.rules = DrilluptExplanation(rules=self.output_rule, default_rule=self.default_label)
         return self
 
     def predict(self, X_test):
+        X_test = self._ensure_dataframe(X_test, columns=self.X_columns)
+       
         predictions = X_test.apply(self.rule_set_cover, rule_list=self.output_rule, axis=1)
         return predictions
 
@@ -1202,8 +1267,12 @@ class DrillUp():
             if ":" in eachfeature:
                 feature_name = re.split(':', eachfeature)[0]
                 feature_val = re.split(':', eachfeature)[1]
-                if str(row[feature_name]) != feature_val:
-                    return False
+                if isinstance(row.index, pd.RangeIndex) or all(isinstance(idx, (int, np.integer)) for idx in row.index):
+                    if str(row[int(feature_name)]) != feature_val:
+                        return False
+                elif all(isinstance(idx, str) for idx in row.index):
+                    if str(row[feature_name]) != feature_val:
+                        return False
         return True
 
     # format set of rule to dictionary for filter df use
@@ -1316,3 +1385,27 @@ class DrillUp():
                           self.label_col + '_ratio']
         out_df["rules"] = out_df["rules"].astype(str)
         return out_df
+    def _ensure_dataframe(self, X, columns=None):
+        """
+        Ensure the input is a pandas DataFrame.
+        
+        Parameters:
+            X (numpy.ndarray, pandas.DataFrame, or pandas.Series): Input data.
+            columns (list of str, optional): Column names for the DataFrame if X is a numpy array or Series.
+            
+        Returns:
+            pandas.DataFrame: The input data as a DataFrame.
+        """
+        if isinstance(X, np.ndarray):
+            logging.info("Converting numpy array to DataFrame.")
+            return pd.DataFrame(X, columns=columns)  # 如果columns为None，Pandas会自动生成默认列名
+        elif isinstance(X, pd.DataFrame):
+            return X
+        elif isinstance(X, pd.Series):
+            logging.info("Converting pandas Series to DataFrame.")
+            if columns is not None and isinstance(columns, list) and len(columns) == 1:
+                return pd.DataFrame(X, columns=columns)
+            else:
+                return pd.DataFrame(X, columns=['0'] if columns is None else columns)
+        else:
+            raise TypeError("Input data must be either a numpy array, pandas DataFrame, or pandas Series.")
