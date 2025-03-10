@@ -98,15 +98,35 @@ def test_drillup_from_csv():
     acc = np.sum(1.0*(predictions.values==y.values))/y.shape[0]
     print(f'The training acc is {acc:.2f}')
     '''
-    IF 2!=o AND 4!=o AND 6!=o, THEN 1
-    ELIF 0!=o AND 4!=o AND 8!=o, THEN 1
-    ELIF 1!=o AND 2!=o AND 3!=o AND 8!=o, THEN 1
-    ELIF 1!=o AND 2==o AND 4!=o AND 5!=o, THEN 1
-    ELIF 0!=o AND 2!=o AND 3!=o AND 7!=o, THEN 1
-    ELIF 4==o AND 5!=o AND 6!=o AND 7!=o AND 8!=o, THEN 1
-    ELIF 0!=o AND 5!=o AND 6!=o AND 7!=o, THEN 1
+    IF 4==x, THEN 1
+    ELIF 0==x AND 8==x, THEN 1
+    ELIF 2==x AND 6==x, THEN 1
+    ELIF 2==x AND 7==o, THEN 1
+    ELIF 0==x AND 7==o, THEN 1
+    ELIF 5==o AND 6==x, THEN 1
+    ELIF 0==x AND 5==o, THEN 1
+    ELIF 3==o AND 8==x, THEN 1
+    ELIF 2==x AND 3==o, THEN 1
+    ELIF 1==o AND 8==x, THEN 1
+    ELIF 1==o AND 6==x, THEN 1
+    ELIF 8==b, THEN 1
+    ELIF 6==b, THEN 1
+    ELIF 2==b, THEN 1
+    ELIF 0==b, THEN 1
+    ELIF 7==b, THEN 1
+    ELIF 5==b, THEN 1
+    ELIF 3==b, THEN 1
+    ELIF 1==b, THEN 1
+    ELIF 7==x, THEN 1
+    ELIF 5==x, THEN 1
+    ELIF 3==x, THEN 1
+    ELIF 1==x, THEN 1
+    ELIF 8==o, THEN 1
+    ELIF 6==o, THEN 1
+    ELIF 2==o, THEN 1
+    ELIF 0==o, THEN 1
     ELSE 0
-    The training acc is 0.91
+    The training acc is 0.65
     '''
 
 if __name__ == "__main__":
