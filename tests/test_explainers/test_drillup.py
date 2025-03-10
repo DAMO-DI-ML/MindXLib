@@ -130,4 +130,4 @@ def test_drillup_from_csv():
     '''
 
 if __name__ == "__main__":
-    test_drillup_from_csv()
+    test_drillup_with_numpy()

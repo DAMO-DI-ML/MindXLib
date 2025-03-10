@@ -711,7 +711,7 @@ class SSRL(RuleExplainer):
             RuleExplanation object containing the learned rules
         """          
         # Process input data
-        X, y, feature_columns, label_column = self._process_input_data(X, y, is_fit=True)
+        X, y, feature_columns, label_coluzmn = self._process_input_data(X, y, is_fit=True)
         dataset = pd.concat((X, y), axis=1)
         
         # Store feature columns for prediction
@@ -781,3 +781,4 @@ class SSRL(RuleExplainer):
                     
         return result.values if isndarray else result
     
+

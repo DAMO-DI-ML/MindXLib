@@ -8,7 +8,8 @@ import time
 import ast
 from mip import Model, xsum, minimize, BINARY, CONTINUOUS, Constr, Column, MINIMIZE
 from sklearn.metrics import balanced_accuracy_score, accuracy_score
-
+from mindxlib.base.explainer import RuleExplainer
+from mindxlib.base.explanation import RuleExplanation
 # import features
 # from datautil import DatasetLoader
 
@@ -22,6 +23,41 @@ logging.basicConfig(
 # logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger()
 
+class DiverExplanation(RuleExplanation):
+    def __init__(self, rules, default_rule=0):
+        self.rules = rules  # 规则列表，每个规则是一个包含多个 'feature:value' 字符串的列表
+        self.default_rule = default_rule  # 默认规则
+
+    def show(self):
+        """Override show method to print rules in custom format."""
+        N = len(self.rules)
+        if N > 0:
+            # 输出第一个规则
+            print(f"IF {self._format_conditions(self.rules[0])}, THEN 1")
+            # 输出其余的规则
+            for ii in range(1, N):
+                print(f"ELIF {self._format_conditions(self.rules[ii])}, THEN 1")
+            # 输出默认规则
+            print("ELSE 0")
+        else:
+            # 如果没有规则，仅输出默认规则
+            print(f"IF THEN {self.default_rule}")
+
+    def _format_conditions(self, conditions):
+        """
+        Helper method to format the conditions of a rule into a readable string.
+        
+        Parameters:
+            conditions (list of str): List of 'feature:value' strings.
+            
+        Returns:
+            str: Formatted condition string.
+        """
+        formatted_conditions = []
+        for condition in conditions:
+            feature, value = condition.split(':')
+            formatted_conditions.append(f"{feature}=={value}")
+        return " AND ".join(formatted_conditions)
 
 class Itemset(object):
     '''
@@ -551,7 +587,7 @@ def pattern_to_dict(p):
 # filter_dict1 = pattern_to_dict(pat)
 # filter_df = res.loc[(res[list(filter_dict1)] == pd.Series(filter_dict1)).all(axis=1)]
 
-class Diver():
+class Diver(RuleExplainer):
     def __init__(self, label_col, label_val, pos_beta=1.5, overlap_beta_=0.2,
                  complexity_cost=0.00001,dim_list=None,sup_ratio=0.01,
                 write_model=False, disable_log=True, cache_ind=False):
@@ -581,6 +617,7 @@ class Diver():
         self.default_label = default_label
 
         data_df = pd.concat((X, y), axis=1)
+        data_df.columns = [str(col) for col in data_df.columns]
         label_cnt = data_df[self.label_col].value_counts()
         label_info = [(label_cnt.index[k], label_val) for (k, label_val) in enumerate(label_cnt)]
         sort_label_info = sorted(label_info, key=lambda x: x[1])
@@ -600,16 +637,21 @@ class Diver():
         for each_rule in res['lp_res']['short_rule']:
             print(each_rule, self.label_val)
             # print([self.dim_list.index(i) for i in each_rule])
-            output_rule.append(each_rule)
-            add = Rule([self.dim_list.index(i) for i in each_rule], self.label_val)
+
+            output_rule.append(list(each_rule))
+            add = Rule([self.dim_list.index(i.split(":")[0]) for i in each_rule], self.label_val)
             diver_rule.append(add)
         self.return_rule = output_rule
         self.diver_rule = diver_rule
+
+        self.rules = DiverExplanation(rules=self.return_rule, default_rule=self.default_label)
         return self
 
     def predict(self, X_test):
+        X_test = self._ensure_dataframe(X_test,columns=self.X_columns)
         Xtest_list = [Transaction(feat2item(t)) for t in X_test.values]
         ypredict_diver = predict_all(self.diver_rule, self.default_label, Xtest_list)
+        ypredict_diver = self._ensure_dataframe(ypredict_diver,columns=['label']).iloc[:,0]
         return ypredict_diver
         # bacc = balanced_accuracy_score(y_test, ypredict_diver)
         # acc = accuracy_score(y_test, ypredict_diver)
@@ -633,9 +675,14 @@ class Diver():
         elif isinstance(X, pd.Series):
             logging.info("Converting pandas Series to DataFrame.")
             if columns is not None and isinstance(columns, list) and len(columns) == 1:
-                return pd.DataFrame(X, columns=columns)
+                df = pd.DataFrame(X)
+                df.columns = columns
+                return df
             else:
-                return pd.DataFrame(X, columns=['0'] if columns is None else columns)
+                columns=['0'] if columns is None else columns
+                df = pd.DataFrame(X)
+                df.columns = columns
+                return df
         else:
             raise TypeError("Input data must be either a numpy array, pandas DataFrame, or pandas Series.")
     # core drill up procedure
