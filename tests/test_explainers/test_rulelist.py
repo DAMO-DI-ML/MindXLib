@@ -1,6 +1,7 @@
 import numpy as np
 from mindxlib import SSRL
 import pandas as pd
+from mindxlib.explainers.rules.rulelist import SSRL
 from mindxlib.utils.features import FeatureBinarizer
 
 def test_rulelist_with_numpy():
@@ -43,7 +44,6 @@ def test_rulelist_with_numpy():
 def test_rulelist_invalid_input():
     explainer = SSRL(0.5)
     
-
     X_invalid = np.array([[1, 2], [3, 4]])  # 2D array with wrong shape
     y_invalid = np.array([1, 2, 3])  # Length mismatch with X_invalid
     
@@ -189,3 +189,25 @@ def test_rulelist_multiclass_with_pandas():
     train_predictions_default = explainer.predict(data)
     train_acc_default = np.mean(train_predictions_default == y)
     print(f'Training accuracy with default label=1: {train_acc_default:.2f}')
+
+    # test_binarized = binarizer.transform(test_data)
+    # predictions = explainer.predict(test_binarized)
+    
+    # Assertions
+    # assert predictions is not None, "Predictions should not be None"
+    assert hasattr(explainer, 'defaultRuleName'), "Explainer should have default rule after fitting"
+    assert len(str(explainer.defaultRuleName)) > 0, "Default rule name should be set"
+
+    
+    # Test accuracy calculation
+    train_predictions = explainer.predict(X_binarized)
+    accuracy = np.sum(train_predictions == y) / len(y)
+    assert 0 <= accuracy <= 1, "Accuracy should be between 0 and 1"
+
+    print(f"accuracy: {accuracy}")
+    
+    # Test rulelist printing
+    explainer.print_rulelist()
+
+if __name__ == '__main__':
+    test_rulelist_with_pandas()
