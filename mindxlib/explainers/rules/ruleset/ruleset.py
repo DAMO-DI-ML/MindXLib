@@ -31,9 +31,9 @@ def get_binary_path():
         else:  # x86_64
             return bin_dir + 'new-fastrule-darwin-x86_64'
     elif system == 'linux': # x86_64
-            return bin_dir + 'new-app-linux-amd64'
+            return bin_dir + 'new-fastrule-linux-amd64'
     elif system == 'windows':
-            return bin_dir + 'new-app-win-amd64.exe'
+            return bin_dir + 'new-fastrule-win-amd64.exe'
     else:
         raise RuntimeError(f"Unsupported platform: {system} on {machine}")
 
