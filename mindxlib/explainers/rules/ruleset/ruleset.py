@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import subprocess as sp
+import platform
 
 import numpy as np
 import pandas as pd
@@ -17,8 +18,27 @@ from mindxlib.utils.features import FeatureBinarizer
 from sklearn.base import BaseEstimator
 
 
-binpath = os.path.dirname(os.path.abspath(__file__)) + '/bin/fastrule-darwin-amd64'
+# Determine the appropriate binary based on the operating system and architecture
+def get_binary_path():
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    
+    bin_dir = os.path.dirname(os.path.abspath(__file__)) + '/bin/'
+    
+    if system == 'darwin':  # macOS
+        if machine in ('arm64', 'aarch64'):
+            return bin_dir + 'new-fastrule-darwin-arm64'
+        else:  # x86_64
+            return bin_dir + 'new-fastrule-darwin-x86_64'
+    elif system == 'linux': # x86_64
+            return bin_dir + 'new-app-linux-amd64'
+    elif system == 'windows':
+            return bin_dir + 'new-app-win-amd64.exe'
+    else:
+        raise RuntimeError(f"Unsupported platform: {system} on {machine}")
 
+binpath = get_binary_path()
+# binpath = os.path.dirname(os.path.abspath(__file__)) + '/bin/f1rule-darwin-aarch64'
 
 
 class RulesetExplanation(RuleExplanation):
