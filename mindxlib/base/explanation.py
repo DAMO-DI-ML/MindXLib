@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 class Explanation(ABC):
-    def __init__(self, data: pd.DataFrame):
+    def __init__(self, data):
         """base class for all explanation results
         Args:
             data: original input data (unified to DataFrame, time series expanded to multiple columns)
@@ -54,13 +54,18 @@ class RuleExplanation(Explanation):
 class FeatureImportanceExplanation(Explanation):
     """Class for feature importance explanations."""
     
-    def __init__(self, feature_importance: Dict[str, float]):
+    def __init__(self, data, feature_importance: Dict[str, float]):
         """Initialize feature importance explanation.
         
         Args:
             feature_importance (Dict[str, float]): Dictionary mapping feature names to importance scores
         """
-        super().__init__()
+        super().__init__(data)
+        
+        self.data = data
+
+        if not isinstance(feature_importance, dict):
+            feature_importance = {"feature_importance": feature_importance}
         self.feature_importance = feature_importance
 
     def to_dict(self) -> Dict[str, Any]:
@@ -70,6 +75,12 @@ class FeatureImportanceExplanation(Explanation):
             Dict[str, Any]: Dictionary containing the feature importance scores
         """
         return {"feature_importance": self.feature_importance}
+    
+    def validate(self):
+        pass
+        
+    def show(self):
+        pass
 
 # shape function explanation (GAM)
 class GAMShapeFunctionExplanation(Explanation):
