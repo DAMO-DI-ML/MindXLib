@@ -135,5 +135,5 @@ def test_rulelist_multiclass_with_pandas():
     train_acc_default = np.mean(train_predictions_default == y)
     print(f'Training accuracy with default label=1: {train_acc_default:.2f}')
 
-# test_rulelset_with_numpy()
+test_rulelset_with_numpy()
 test_ruleset_from_csv()
