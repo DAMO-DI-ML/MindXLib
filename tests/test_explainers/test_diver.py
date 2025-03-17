@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from mindxlib.explainers.rules.ruleset import Diver
+from mindxlib import Diver
 
 
 
@@ -17,11 +17,11 @@ def test_diver_with_numpy():
     y = df['label'].to_numpy()
     
     # 初始化 Diver 类实例
-    drillup = Diver(label_col='label', label_val=1, sup_ratio=0.2)
+    driver = Diver(label_col='label', label_val=1, sup_ratio=0.2)
     
     # 拟合模型
-    drillup.fit(X, y)
-    drillup.show()
+    driver.fit(X, y)
+    driver.show()
     # 准备测试数据
     test_data = {
         'age': ['young', 'middle-aged', 'old'],
@@ -30,7 +30,7 @@ def test_diver_with_numpy():
     test_df = pd.DataFrame(test_data).to_numpy()
     
     # 对新数据进行预测
-    predictions = drillup.predict(test_df)
+    predictions = driver.predict(test_df)
     print("Predictions:", predictions.tolist())
 
 
@@ -48,11 +48,11 @@ def test_diver_with_dataframe():
     y = df['label']
     
     # 初始化 Diver 类实例
-    drillup = Diver(label_col='label', label_val=1, sup_ratio=0.2)
+    driver = Diver(label_col='label', label_val=1, sup_ratio=0.2)
     
     # 拟合模型
-    drillup.fit(X, y)
-    drillup.show()
+    driver.fit(X, y)
+    driver.show()
     # 准备测试数据
     test_data = {
         'age': ['young', 'middle-aged', 'old'],
@@ -61,22 +61,22 @@ def test_diver_with_dataframe():
     test_df = pd.DataFrame(test_data)
     
     # 对新数据进行预测
-    predictions = drillup.predict(test_df)
+    predictions = driver.predict(test_df)
     print("Predictions:", predictions.tolist())
     
-def test_drillup_from_csv():
+def test_diver_from_csv():
     data = pd.read_csv('dataset/tic_tac_toe.csv', header=None)
     y = data.iloc[:,-1]
     print(y.value_counts())
     y = y.map({'negative': 0, 'positive': 1})
     X = data.iloc[:,:-1]
-    drillup = Diver(label_col='label', label_val=1, pos_beta=2, overlap_beta_=0.2,
+    driver = Diver(label_col='label', label_val=1, pos_beta=2, overlap_beta_=0.2,
                  complexity_cost=0.001,sup_ratio=0.2)
 
-    drillup.fit(X, y)
+    driver.fit(X, y)
     
-    drillup.show()
-    predictions = drillup.predict(X)
+    driver.show()
+    predictions = driver.predict(X)
     acc = np.sum(1.0*(predictions.values==y.values))/y.shape[0]
     print(f'The training acc is {acc:.2f}')
     '''
@@ -104,4 +104,4 @@ def test_drillup_from_csv():
 
 
 if __name__ == "__main__":
-    test_drillup_from_csv()
+    test_diver_with_numpy()
