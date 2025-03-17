@@ -15,10 +15,27 @@ from mindxlib.base.explanation import RuleExplanation
 from mindxlib.utils.datautil import process_input_data
 from mindxlib.utils.features import FeatureBinarizer
 from sklearn.base import BaseEstimator
+import platform
 
+def get_binary_path():
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    
+    bin_dir = os.path.dirname(os.path.abspath(__file__)) + '/bin/'
+    
+    if system == 'darwin':  # macOS
+        if machine in ('arm64', 'aarch64'):
+            return bin_dir + 'new-f1rule-darwin-arm64'
+        else:  # x86_64
+            return bin_dir + 'new-f1rule-darwin-x86_64'
+    elif system == 'linux': # x86_64
+            return bin_dir + 'new-f1rule-linux-amd64'
+    elif system == 'windows':
+            return bin_dir + 'new-f1rule-win-amd64.exe'
+    else:
+        raise RuntimeError(f"Unsupported platform: {system} on {machine}")
 
-binpath = os.path.dirname(os.path.abspath(__file__)) + '/bin/f1rule-darwin-aarch64'
-
+binpath = get_binary_path()
 
 class RulesetExplanation(RuleExplanation):
     def show(self):
