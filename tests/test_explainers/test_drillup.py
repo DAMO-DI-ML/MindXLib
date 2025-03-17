@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from mindxlib.explainers.rules.ruleset import DrillUp
+from mindxlib import DrillUp
 
 
 
