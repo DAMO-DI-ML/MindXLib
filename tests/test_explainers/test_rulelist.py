@@ -3,6 +3,7 @@ from mindxlib import SSRL
 import pandas as pd
 from mindxlib.explainers.rules.rulelist import SSRL
 from mindxlib.utils.features import FeatureBinarizer
+from sklearn.model_selection import train_test_split
 
 def test_rulelist_with_numpy():
     # Create numpy array with meaningful feature names
@@ -114,13 +115,24 @@ def test_rulelist_from_csv():
     data = pd.read_csv('dataset/tic_tac_toe.csv', header=None)
     y = data.iloc[:,-1]
     X = data.iloc[:,:-1]
-    explainer = SSRL(cc=10, lambda_1=1, distorted_step=10, categorical_features=X.columns.tolist())
-    explainer.fit(X, y)
+    
+    # Split data into train and test sets (80% train, 20% test)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    explainer = SSRL(cc=10, lambda_1=2, distorted_step=10, categorical_features=X.columns.tolist())
+    explainer.fit(X_train, y_train, default_label='positive')
     explainer.show()
-    predictions = explainer.predict(X)
-    acc = np.sum(1.0*(predictions.values==y.values))/y.shape[0]
-    breakpoint()
-    print(f'The training acc is {acc:.2f}')
+    
+    # Evaluate on training data
+    train_predictions = explainer.predict(X_train)
+    train_acc = np.sum(1.0*(train_predictions.values==y_train.values))/y_train.shape[0]
+    print(f'The training accuracy is {train_acc:.2f}')
+    
+    # Evaluate on test data
+    test_predictions = explainer.predict(X_test)
+    test_acc = np.sum(1.0*(test_predictions.values==y_test.values))/y_test.shape[0]
+    print(f'The test accuracy is {test_acc:.2f}')
+    
     '''
     IF 1==o AND 4==o AND 7==o, THEN negative
     ELIF 3==o AND 4==o AND 5==o, THEN negative
@@ -194,4 +206,5 @@ def test_rulelist_multiclass_with_pandas():
 
 
 
-test_rulelist_multiclass_with_pandas()
+# test_rulelist_multiclass_with_pandas()
+test_rulelist_from_csv()
