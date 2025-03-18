@@ -55,7 +55,7 @@ class subProblemSolver():
                 gain_B = BitMap.intersection(B,bit_intersect).difference_cardinality(self.bitmap[feature])
                 gain_C = BitMap.intersection(C,bit_intersect).difference_cardinality(self.bitmap[feature])
                 
-                ratio = (gain_B+lambda_0*gain_C+self.cc+1e-10)/(gain_A+lambda_0*lambda_1+self.cc+1e-10)
+                ratio = (gain_B+lambda_0*gain_C+self.cc)/(gain_A+lambda_0*lambda_1+self.cc)
                 if ratio>max_ratio:
                     max_ratio = ratio
                     best_feature = feature
@@ -158,7 +158,7 @@ class subProblemSolver():
             score_A_list_1.append((feature,gain_B_C))
             gain_O = gain_B_C - gain_A - gain_len
             score_O_list_1.append((feature,gain_O))
-            score_ratio_list_1.append((feature,(gain_B_C+self.cc+1e-10)/(gain_A+gain_len+self.cc+1e-10)))
+            score_ratio_list_1.append((feature,(gain_B_C+self.cc)/(gain_A+gain_len+self.cc)))
         score_A_list_2 = []
         score_O_list_2 = []
         score_ratio_list_2 = [] 
@@ -179,7 +179,7 @@ class subProblemSolver():
             gain_O = gain_B_C-gain_A-gain_len
             score_O_list_2.append((feature,gain_O))
 
-            score_ratio_list_2.append((feature,(gain_B_C+self.cc+1e-10)/(gain_A+gain_len+self.cc+1e-10)))
+            score_ratio_list_2.append((feature,(gain_B_C+self.cc)/(gain_A+gain_len+self.cc)))
         score_A_list_1 = sorted(score_A_list_1,key=lambda x:x[-1],reverse=True)
         score_A_list_2 = sorted(score_A_list_2,key=lambda x:x[-1],reverse=True)
         score_O_list_1 = sorted(score_O_list_1,key=lambda x:x[-1],reverse=True)
@@ -770,14 +770,14 @@ class SSRL(RuleExplainer):
         X, _, feature_columns, _ = self._process_input_data(X)
         
         # Make predictions
-        result = pd.Series([self.default_label] * X.shape[0], index=X.index)
+        result = pd.Series(np.zeros(X.shape[0], dtype='int'), index=X.index)
         for idx, row in X.iterrows():
+            prediction = self.default_label  # Default prediction
             for rule in self.rulelist[:-1]:  # Skip default rule
                 if set(rule['condition']).issubset(set(row[row>0.5].index)):
                     prediction = rule['label_name']
-                    result.loc[idx] = prediction
                     break
-            
+            result.loc[idx] = prediction
                     
         return result.values if isndarray else result
     
