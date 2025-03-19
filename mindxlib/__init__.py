@@ -3,9 +3,7 @@ from mindxlib.explainers.rules.ruleset import Diver
 from mindxlib.explainers.rules.ruleset import DrillUp
 from mindxlib.explainers.rules.ruleset import RuleSetImb
 from mindxlib.explainers.rules.ruleset import RuleSet
-# from mindxlib.explainers.rules.timeseries import FDTempExplainer
+from mindxlib.explainers.timeseries import FDTempExplainer
+from mindxlib.explainers.interactive_gam.gam import GAM
 
-
-
-
-__all__ = ['SSRL','FDTempExplainer','Diver','DrillUp','RuleSetImb','RuleSet'] 
+__all__ = ['SSRL','FDTempExplainer','Diver','DrillUp','RuleSetImb','RuleSet','GAM'] 
