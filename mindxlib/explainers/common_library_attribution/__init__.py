@@ -3,7 +3,7 @@ Common attribution methods from popular interpretability libraries
 """
 
 from .shap import (
-    KernelExplainer, PermutationExplainer
+    ShapExplainer, PermutationExplainer
 )
 from .lime import (
     LimeTabularExplainer
@@ -12,7 +12,7 @@ from .ig import IntegratedGradients
 
 __all__ = [
     # SHAP explainers
-    'KernelExplainer', 'PermutationExplainer',
+    'ShapExplainer', 'PermutationExplainer',
     
     # LIME explainers  
     'LimeTabularExplainer',

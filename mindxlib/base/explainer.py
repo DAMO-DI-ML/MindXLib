@@ -171,16 +171,16 @@ class FeatureImportanceExplainer(ExplainerBase):
         data = self._validate_data(data)
 
         if baseline is not None:
-            baseline = self._validate_baseline(baseline, data)
+            self._validate_baseline(baseline, data, **kwargs)
         
-        baseline = self._initial_baseline(data, baseline)
+        baseline = self._initial_baseline(data, baseline, **kwargs)
         
         # Generate attributions (to be implemented by child classes)
         attributions = self._compute_attributions(data, baseline, **kwargs)
         
         return self._format_explanation(data, attributions)
     
-    def _validate_baseline(self, baseline, data):
+    def _validate_baseline(self, baseline, data, **kwargs):
         """Validate baseline reference values
         
         Args:
@@ -195,7 +195,7 @@ class FeatureImportanceExplainer(ExplainerBase):
             raise ValueError("Baseline must have same number of features as data")
         return baseline
     
-    def _initial_baseline(self, data, baseline):
+    def _initial_baseline(self, data, baseline, **kwargs):
         """Initial baseline by method
         Args:
             data Input data for shape reference
