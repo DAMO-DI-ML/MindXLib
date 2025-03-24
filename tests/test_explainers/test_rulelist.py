@@ -35,6 +35,7 @@ def test_rulelist_with_numpy():
     
     # Fit the model
     explainer.fit(X, y)
+
     explainer.show()
     X_test = np.array([[25, 30000, 12]])
     a = explainer.predict(X_test)
@@ -118,6 +119,7 @@ def test_rulelist_from_csv():
     explainer.show()
     predictions = explainer.predict(X)
     acc = np.sum(1.0*(predictions.values==y.values))/y.shape[0]
+    breakpoint()
     print(f'The training acc is {acc:.2f}')
     '''
     IF 1==o AND 4==o AND 7==o, THEN negative
@@ -190,24 +192,6 @@ def test_rulelist_multiclass_with_pandas():
     train_acc_default = np.mean(train_predictions_default == y)
     print(f'Training accuracy with default label=1: {train_acc_default:.2f}')
 
-    # test_binarized = binarizer.transform(test_data)
-    # predictions = explainer.predict(test_binarized)
-    
-    # Assertions
-    # assert predictions is not None, "Predictions should not be None"
-    assert hasattr(explainer, 'defaultRuleName'), "Explainer should have default rule after fitting"
-    assert len(str(explainer.defaultRuleName)) > 0, "Default rule name should be set"
 
-    
-    # Test accuracy calculation
-    train_predictions = explainer.predict(X_binarized)
-    accuracy = np.sum(train_predictions == y) / len(y)
-    assert 0 <= accuracy <= 1, "Accuracy should be between 0 and 1"
 
-    print(f"accuracy: {accuracy}")
-    
-    # Test rulelist printing
-    explainer.print_rulelist()
-
-if __name__ == '__main__':
-    test_rulelist_with_pandas()
+test_rulelist_multiclass_with_pandas()

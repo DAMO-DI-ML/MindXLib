@@ -781,3 +781,4 @@ class SSRL(RuleExplainer):
                     
         return result.values if isndarray else result
     
+

@@ -4,3 +4,6 @@
 *.pyo
 *.json
 .env
+.python-version
+.zshrc
+git-m.sh

@@ -2,10 +2,8 @@
 Interactive Generalized Additive Model (GAM) explainers
 """
 
-from .attribution import GAMAttributionExplainer
-from .gam import GAMExplainer
+from .gam import GAM
 
 __all__ = [
-    'GAMAttributionExplainer',
-    'GAMExplainer'
+    'GAM'
 ]
