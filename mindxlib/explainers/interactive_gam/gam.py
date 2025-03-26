@@ -7,6 +7,8 @@ from scipy.linalg import circulant
 from scipy.optimize import nnls
 import copy
 import numba as nb
+from mindxlib.visualization.plots import plot_static_gam
+from mindxlib.visualization.interactive import create_app
 
 @nb.jit(nopython=True)
 def ReLu_product(x,w,split,index_list):
@@ -522,7 +524,116 @@ class GAM_light:
                     last_train_loss = train_loss
         for ii in range(self.n_features):
             self.shapeFunctionOptimizerList[ii].prepare_prediction()
-
+        if mode == 'train':
+            self._calculate_variance_covariance_matrix()
+    def _calculate_variance_covariance_matrix(self):
+        """Calculate the variance-covariance matrix for confidence intervals."""
+        # Get the residuals
+        y_pred = self.predict(self.X * self.scale_info['x_scale'] + self.scale_info['x_offset'])
+        residuals = (self.Y * self.scale_info['y_scale'] + self.scale_info['y_offset']) - y_pred
+        
+        # Estimate the residual variance (sigma^2)
+        n = len(residuals)
+        p = sum([len(sfo.relu_weight) for sfo in self.shapeFunctionOptimizerList])
+        self.sigma2 = np.sum(residuals**2) / (n - p)
+        
+        # Store the design matrices and parameter vectors for each feature
+        self.design_matrices = []
+        self.param_vectors = []
+        
+        for i in range(self.n_features):
+            sfo = self.shapeFunctionOptimizerList[i]
+            
+            # Create design matrix based on the piecewise linear formulation
+            X_feature = self.X[:, i]
+            
+            # For each x value, find its position in the threshold list
+            indices = np.searchsorted(sfo.threshold_list, X_feature)
+            
+            # Create a design matrix where each row corresponds to a sample
+            # and has two non-zero entries: 1 for the intercept and 1 for the slope
+            Z = np.zeros((X_feature.shape[0], len(sfo.threshold_list) + 1))
+            Z[:, 0] = 1  # Intercept term
+            
+            # For each sample, set the appropriate slope term
+            for j, idx in enumerate(indices):
+                if idx > 0:  # Skip if index is 0 (below first threshold)
+                    Z[j, idx] = X_feature[j] - sfo.threshold_list[idx-1]
+            
+            self.design_matrices.append(Z)
+            
+            # Parameter vector includes the constant and slopes
+            params = np.concatenate([[sfo.constant], sfo.slope])
+            self.param_vectors.append(params)
+            
+            # Calculate the variance-covariance matrix for this feature
+            try:
+                ZtZ_inv = np.linalg.inv(Z.T @ Z)
+                sfo.vcov = ZtZ_inv * self.sigma2
+            except np.linalg.LinAlgError:
+                # If matrix is singular, use pseudo-inverse
+                ZtZ_inv = np.linalg.pinv(Z.T @ Z)
+                sfo.vcov = ZtZ_inv * self.sigma2
+    def get_confidence_intervals(self, X_test, alpha=0.05):
+        """
+        Calculate confidence intervals for shape functions at the given X values.
+        
+        Parameters
+        ----------
+        X_test : array-like
+            Points at which to evaluate the confidence intervals
+        alpha : float, default=0.05
+            Significance level (e.g., 0.05 for 95% confidence intervals)
+            
+        Returns
+        -------
+        list of tuples
+            Each tuple contains (x_values, y_values, lower_ci, upper_ci) for a feature
+        """
+        import scipy.stats as stats
+        
+        # Scale the input data
+        X_test_scaled = (X_test - self.scale_info['x_offset']) / self.scale_info['x_scale']
+        
+        # Critical value for the confidence interval
+        z_value = stats.norm.ppf(1 - alpha/2)
+        
+        results = []
+        
+        for i in range(self.n_features):
+            sfo = self.shapeFunctionOptimizerList[i]
+            
+            # Get the x values for this feature
+            x_values = X_test_scaled[:, i]
+            
+            # Sort the x values for plotting
+            sort_idx = np.argsort(x_values)
+            x_sorted = x_values[sort_idx]
+            
+            # Create design matrix for these points
+            thresholds = sfo.threshold_list.reshape(-1, 1)
+            Z = np.maximum(x_sorted.reshape(-1, 1) - thresholds.T, 0)
+            Z = np.column_stack([np.ones(x_sorted.shape[0]), Z])
+            
+            # Predict the shape function values
+            y_values = Z @ np.concatenate([[sfo.constant], sfo.relu_weight])
+            
+            # Calculate standard errors
+            se = np.sqrt(np.diag(Z @ sfo.vcov @ Z.T))
+            
+            # Calculate confidence intervals
+            lower_ci = y_values - z_value * se
+            upper_ci = y_values + z_value * se
+            
+            # Rescale back to original scale
+            x_rescaled = x_sorted * self.scale_info['x_scale'][i] + self.scale_info['x_offset'][i]
+            y_rescaled = y_values * self.scale_info['y_scale']
+            lower_rescaled = lower_ci * self.scale_info['y_scale']
+            upper_rescaled = upper_ci * self.scale_info['y_scale']
+            
+            results.append((x_rescaled, y_rescaled, lower_rescaled, upper_rescaled))
+        
+        return results
     def add_constraints(self,constraint_list,idx):
         for cons in constraint_list:
             cons['left'] = self._scale_data(cons['left'],idx=idx)
@@ -691,8 +802,13 @@ class GAM:
             Predicted values.
         """
         if isinstance(X, pd.DataFrame):
-            X = X.values
-        
+            missing_features = set(self.feature_names) - set(X.columns)
+            if missing_features:
+                raise ValueError(f"Missing required features: {missing_features}")
+            X = X[self.feature_names].values
+        elif isinstance(X, np.ndarray):
+            if X.shape[1] != len(self.feature_names):
+                raise ValueError(f"Expected {len(self.feature_names)} features but got {X.shape[1]}")
         return self.model.predict(X)
     
     def _process_constraint_type(self, constraint_type):
@@ -859,208 +975,57 @@ class GAM:
         
         return self
     
-    def show(self, feature_indices=None, figsize=(12, 10), display=True, 
-             title=None, xlabel=None, ylabel="Attribution", show_density=True, 
-             color='#1f77b4', linestyle='-', linewidth=2, alpha=0.7, 
-             density_color='#ff7f0e', density_alpha=0.3, density_markersize=5,
-             use_color_cycle=False, save_path=None, dpi=300, xlim=None, ylim=None, 
-             layout=None, **kwargs):
+    def show(self, data, mode='static', port=8082, waterfall_height="40vh", **kwargs):
+        '''
+        mode: 'static' or 'interactive'
+        port: only used in interactive mode
+        waterfall_height: height of the waterfall component in interactive mode (e.g., "40vh", "300px")
+        '''
+        if self.sfo is None:
+            raise ValueError("Model has not been fitted yet. Call fit() first.")
+        if mode == 'static':
+            return plot_static_gam(self, data, **kwargs)
+        elif mode == 'interactive':
+            # plot_interactive_gam(self, data, **kwargs)
+            app = create_app(self, data, waterfall_height=waterfall_height)
+            app.run(debug=False, port=port)
+            # return
+        else:
+            raise ValueError(f"Invalid mode: {mode}. Choose from 'static' or 'interactive'.")
+    def get_confidence_intervals(self, X, alpha=0.05):
         """
-        Plot the shape functions for the specified features.
+        Get confidence intervals for the shape functions at the given X values.
         
         Parameters
         ----------
-        feature_indices : int, str, or list, optional
-            Indices or names of features to plot. If None, all features are plotted.
-            Can be a single integer index, a single string feature name, or a list 
-            containing a mix of integer indices and string feature names.
-        figsize : tuple, default=(12, 10)
-            Figure size.
-        display : bool, default=True
-            Whether to display the figure immediately using plt.show().
-        title : str or list of str, optional
-            Title for the plot or list of titles for each subplot.
-        xlabel : str or list of str, optional
-            Label for x-axis or list of labels for each subplot. If None, feature names are used.
-        ylabel : str, default="Attribution"
-            Label for y-axis.
-        show_density : bool, default=True
-            Whether to show density of data points as a rug plot.
-        color : str or list, default='#1f77b4'
-            Color for the line or list of colors for each subplot. By default, all plots use the same blue color.
-        linestyle : str or list, default='-'
-            Line style or list of line styles for each subplot.
-        linewidth : float or list, default=2
-            Line width or list of line widths for each subplot.
-        alpha : float, default=0.7
-            Alpha transparency for the line plot.
-        density_color : str or list, default='#ff7f0e'
-            Color for the density plot. By default, all density plots use the same orange color.
-        density_alpha : float, default=0.3
-            Alpha transparency for the density plot.
-        density_markersize : float, default=5
-            Size of markers in the density plot.
-        use_color_cycle : bool, default=False
-            If True, uses matplotlib's default color cycle for lines instead of a single color.
-        save_path : str, optional
-            Path to save the figure. If provided, the figure will be saved to this location.
-            The file format is determined by the file extension (e.g., .png, .pdf, .svg).
-        dpi : int, default=300
-            Resolution of the saved figure in dots per inch.
-        xlim : tuple or list of tuples, optional
-            The x limits (min, max) for the plot or a list of tuples for each subplot.
-        ylim : tuple or list of tuples, optional
-            The y limits (min, max) for the plot or a list of tuples for each subplot.
-        layout : tuple, optional
-            The layout of subplots as (rows, cols). If None, a square-ish layout is used.
-        **kwargs : dict
-            Additional keyword arguments to pass to matplotlib.
+        X : array-like or DataFrame
+            Data points at which to evaluate the confidence intervals.
+        alpha : float, default=0.05
+            Significance level (e.g., 0.05 for 95% confidence intervals)
             
         Returns
         -------
-        fig : matplotlib.figure.Figure
-            The figure object.
+        dict
+            Dictionary mapping feature names to tuples of (x, y, lower_ci, upper_ci)
         """
         if self.sfo is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
         
-        # Process feature indices
-        if feature_indices is None:
-            # Use all features
-            indices = list(range(len(self.feature_names)))
+        # Process input X
+        if isinstance(X, pd.DataFrame):
+            X_test = X[self.feature_names].values
         else:
-            # Convert to list if a single index/name is provided
-            if isinstance(feature_indices, (int, str)):
-                feature_indices = [feature_indices]
-            
-            # Convert any feature names to indices
-            indices = []
-            for idx in feature_indices:
-                if isinstance(idx, str):
-                    if idx in self.feature_names:
-                        indices.append(self.feature_names.index(idx))
-                elif isinstance(idx, int):
-                    if 0 <= idx < len(self.feature_names):
-                        indices.append(idx)
-                else:
-                    raise ValueError(f"Feature identifier must be a string or integer, got {type(idx)}")
+            X_test = X
         
-        # Create a figure with the specified size
-        fig = plt.figure(figsize=figsize)
+        # Get confidence intervals from the model
+        ci_results = self.model.get_confidence_intervals(X_test, alpha)
         
-        # Prepare plot parameters
-        n_plots = len(indices)
+        # Organize results by feature
+        confidence_intervals = {}
+        for i, feature_name in enumerate(self.feature_names):
+            confidence_intervals[feature_name] = ci_results[i]
         
-        # Determine subplot layout
-        if layout is None:
-            # Default to square-ish layout
-            M = int(round(np.sqrt(n_plots)))
-            N = int(np.ceil(n_plots / M))
-        else:
-            # Use specified layout
-            M, N = layout
-            if M * N < n_plots:
-                print(f"Warning: Layout {layout} can only fit {M*N} plots, but {n_plots} were requested.")
-                # Adjust to fit all plots
-                N = int(np.ceil(n_plots / M))
-        
-        # Handle list or single value for plot parameters
-        def ensure_list(param, n):
-            if isinstance(param, list):
-                return param
-            else:
-                return [param] * n
-        
-        # Use matplotlib's default color cycle if requested
-        if use_color_cycle:
-            prop_cycle = plt.rcParams['axes.prop_cycle']
-            colors = prop_cycle.by_key()['color']
-            # Repeat the color cycle if needed
-            colors = [colors[i % len(colors)] for i in range(n_plots)]
-        else:
-            colors = ensure_list(color, n_plots)
-        
-        linestyles = ensure_list(linestyle, n_plots)
-        linewidths = ensure_list(linewidth, n_plots)
-        
-        # Handle density colors
-        density_colors = ensure_list(density_color, n_plots)
-        
-        # Handle titles and xlabels
-        if title is not None:
-            titles = ensure_list(title, n_plots)
-        else:
-            titles = [None] * n_plots
-        
-        if xlabel is not None:
-            xlabels = ensure_list(xlabel, n_plots)
-        else:
-            xlabels = [self.feature_names[i] for i in indices]
-        
-        # Handle axis limits
-        if xlim is not None:
-            xlims = ensure_list(xlim, n_plots)
-        else:
-            xlims = [None] * n_plots
-        
-        if ylim is not None:
-            ylims = ensure_list(ylim, n_plots)
-        else:
-            ylims = [None] * n_plots
-        
-        # Create subplots
-        for i, (idx, col_index) in enumerate(enumerate(indices)):
-            if i < M * N:  # Only create plots that fit in the layout
-                ax = plt.subplot(M, N, i+1)
-                
-                # Get data for the feature
-                sort_index = np.argsort(self.model.X[:, col_index])
-                x_mark = self.model.X[:, col_index][sort_index]
-                y_mark = self.model.shapeFunctionOptimizerList[col_index].predict(x_mark)
-                
-                # Rescale data
-                x_mark = self.model._rescale_data(x_mark, idx=col_index)
-                y_mark = y_mark * self.model.scale_info['y_scale'] + self.model.scale_info['y_offset'] / len(self.sfo)
-                
-                # Plot shape function
-                ax.plot(x_mark, y_mark, color=colors[i], linestyle=linestyles[i], 
-                        linewidth=linewidths[i], alpha=alpha, **kwargs)
-                
-                # Show density if requested
-                if show_density:
-                    # Get original data for density plot
-                    x_orig = self.model._rescale_data(self.model.X[:, col_index], idx=col_index)
-                    
-                    # Add rug plot at the bottom
-                    baseline = min(y_mark) - 0.1 * (max(y_mark) - min(y_mark))
-                    ax.plot(x_orig, np.ones_like(x_orig) * baseline, '|', 
-                            color=density_colors[i], alpha=density_alpha, markersize=density_markersize)
-                
-                # Set labels and title
-                ax.set_xlabel(xlabels[i])
-                ax.set_ylabel(ylabel)
-                if titles[i]:
-                    ax.set_title(titles[i])
-                
-                # Set axis limits if provided
-                if xlims[i] is not None:
-                    ax.set_xlim(xlims[i])
-                if ylims[i] is not None:
-                    ax.set_ylim(ylims[i])
-        
-        plt.tight_layout()
-        
-        # Save the figure if a path is provided
-        if save_path is not None:
-            plt.savefig(save_path, dpi=dpi, bbox_inches='tight')
-            print(f"Figure saved to {save_path}")
-        
-        # Display the figure if requested
-        if display:
-            plt.show()
-        
-        # Return the figure
-        return fig
+        return confidence_intervals
 
     def get_shape_functions(self):
         """

@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mindxlib.explainers.interactive_gam.gam import GAM
 from sklearn.metrics import mean_squared_error, r2_score
+from mindxlib.visualization.interactive import create_app
 
 def generate_synthetic_data(n_samples=1000, noise_level=0.1, random_state=42):
     """
@@ -43,8 +44,8 @@ def test_pandas_basic():
     # Create and fit GAM model
     gam = GAM(max_iter=200, lambda_1=0.01, verbose=True)
     gam.fit(X_train, y_train)
-    
-    # Make predictions
+    shape_functions = gam.get_shape_functions()
+    gam.show(X_test,mode='interactive')
     y_pred = gam.predict(X_test)
     
     # Calculate metrics
@@ -203,10 +204,10 @@ def test_gam_constraints():
 
 
 
-if __name__ == "__main__":
+
     # Run basic test
-    # gam = test_pandas_basic()
-    gam = test_gam_constraints()
-    gam.show()
-    
+gam = test_pandas_basic()
+# gam = test_gam_constraints()
+gam.show(mode='interactive')
+
 
