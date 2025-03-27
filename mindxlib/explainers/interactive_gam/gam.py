@@ -449,7 +449,7 @@ class GAM_light:
 
     def _init_model(self, X, Y, sample_weights):
         self.X = X
-        self.Y = Y
+        self.Y = Y  # Original Y is stored
         self.scale_info = {}
         self.scale_info['x_offset'] = np.mean(self.X,axis=0)
         self.scale_info['x_scale'] = np.std(self.X,axis=0)+1e-15
@@ -467,7 +467,7 @@ class GAM_light:
             self.sample_weights = sample_weights.flatten()
         self.n_features = self.X.shape[1]
         self.fun_dict = np.zeros(self.X.T.shape)
-        self.res = self.Y
+        self.res = self.Y.copy()  # Create a copy instead of a reference
         self.shapeFunctionOptimizerList = []
         for i in range(self.X.shape[1]):
             SFO = shapeFunctionOptimizer(block_size=self.block_size,\
@@ -525,10 +525,37 @@ class GAM_light:
         for ii in range(self.n_features):
             self.shapeFunctionOptimizerList[ii].prepare_prediction()
         if mode == 'train':
-            self._calculate_variance_covariance_matrix()
-    def _calculate_variance_covariance_matrix(self):
-        """Calculate the variance-covariance matrix for confidence intervals."""
-        # Get the residuals
+            self._calculate_residuals()
+
+    def _create_design_matrix(self, X_scaled, threshold_list):
+        """Helper function to create design matrix for confidence intervals.
+        
+        Parameters
+        ----------
+        X_scaled : array-like
+            Scaled input data
+        threshold_list : array-like
+            Threshold values for the shape function
+            
+        Returns
+        -------
+        array-like
+            Design matrix Z
+        """
+        # Get indices in threshold list for each X value
+        indices = np.searchsorted(threshold_list, X_scaled)
+        
+        # Create design matrix
+        Z = np.zeros((X_scaled.shape[0], len(threshold_list)+1))
+        
+        # For each sample, set the appropriate slope term
+        for j, idx in enumerate(indices):
+            if idx > 0:
+                Z[j, idx] = X_scaled[j] - threshold_list[idx-1]
+                
+        return Z
+
+    def _calculate_residuals(self):
         y_pred = self.predict(self.X * self.scale_info['x_scale'] + self.scale_info['x_offset'])
         residuals = (self.Y * self.scale_info['y_scale'] + self.scale_info['y_offset']) - y_pred
         
@@ -536,104 +563,35 @@ class GAM_light:
         n = len(residuals)
         p = sum([len(sfo.relu_weight) for sfo in self.shapeFunctionOptimizerList])
         self.sigma2 = np.sum(residuals**2) / (n - p)
+
+    
+    # def _calculate_variance_covariance_matrix(self,x_scaled, col = 0):
+    #     """Calculate the variance-covariance matrix for confidence intervals."""
+    #     # Get the residuals
+    #     if col>=self.n_features:
+    #         raise ValueError(f"Column index {col} is out of range for the number of features.")
+
         
-        # Store the design matrices and parameter vectors for each feature
-        self.design_matrices = []
-        self.param_vectors = []
-        
-        for i in range(self.n_features):
-            sfo = self.shapeFunctionOptimizerList[i]
+    #     # Store the design matrices and parameter vectors for each feature
+    #     self.design_matrices = []
+    #     self.param_vectors = []
+
+    #     sfo = self.shapeFunctionOptimizerList[col]
+
+    #     Z = self._create_design_matrix(x_scaled, sfo.threshold_list)
             
-            # Create design matrix based on the piecewise linear formulation
-            X_feature = self.X[:, i]
             
-            # For each x value, find its position in the threshold list
-            indices = np.searchsorted(sfo.threshold_list, X_feature)
             
-            # Create a design matrix where each row corresponds to a sample
-            # and has two non-zero entries: 1 for the intercept and 1 for the slope
-            Z = np.zeros((X_feature.shape[0], len(sfo.threshold_list) + 1))
-            Z[:, 0] = 1  # Intercept term
-            
-            # For each sample, set the appropriate slope term
-            for j, idx in enumerate(indices):
-                if idx > 0:  # Skip if index is 0 (below first threshold)
-                    Z[j, idx] = X_feature[j] - sfo.threshold_list[idx-1]
-            
-            self.design_matrices.append(Z)
-            
-            # Parameter vector includes the constant and slopes
-            params = np.concatenate([[sfo.constant], sfo.slope])
-            self.param_vectors.append(params)
-            
-            # Calculate the variance-covariance matrix for this feature
-            try:
-                ZtZ_inv = np.linalg.inv(Z.T @ Z)
-                sfo.vcov = ZtZ_inv * self.sigma2
-            except np.linalg.LinAlgError:
-                # If matrix is singular, use pseudo-inverse
-                ZtZ_inv = np.linalg.pinv(Z.T @ Z)
-                sfo.vcov = ZtZ_inv * self.sigma2
-    def get_confidence_intervals(self, X_test, alpha=0.05):
-        """
-        Calculate confidence intervals for shape functions at the given X values.
-        
-        Parameters
-        ----------
-        X_test : array-like
-            Points at which to evaluate the confidence intervals
-        alpha : float, default=0.05
-            Significance level (e.g., 0.05 for 95% confidence intervals)
-            
-        Returns
-        -------
-        list of tuples
-            Each tuple contains (x_values, y_values, lower_ci, upper_ci) for a feature
-        """
-        import scipy.stats as stats
-        
-        # Scale the input data
-        X_test_scaled = (X_test - self.scale_info['x_offset']) / self.scale_info['x_scale']
-        
-        # Critical value for the confidence interval
-        z_value = stats.norm.ppf(1 - alpha/2)
-        
-        results = []
-        
-        for i in range(self.n_features):
-            sfo = self.shapeFunctionOptimizerList[i]
-            
-            # Get the x values for this feature
-            x_values = X_test_scaled[:, i]
-            
-            # Sort the x values for plotting
-            sort_idx = np.argsort(x_values)
-            x_sorted = x_values[sort_idx]
-            
-            # Create design matrix for these points
-            thresholds = sfo.threshold_list.reshape(-1, 1)
-            Z = np.maximum(x_sorted.reshape(-1, 1) - thresholds.T, 0)
-            Z = np.column_stack([np.ones(x_sorted.shape[0]), Z])
-            
-            # Predict the shape function values
-            y_values = Z @ np.concatenate([[sfo.constant], sfo.relu_weight])
-            
-            # Calculate standard errors
-            se = np.sqrt(np.diag(Z @ sfo.vcov @ Z.T))
-            
-            # Calculate confidence intervals
-            lower_ci = y_values - z_value * se
-            upper_ci = y_values + z_value * se
-            
-            # Rescale back to original scale
-            x_rescaled = x_sorted * self.scale_info['x_scale'][i] + self.scale_info['x_offset'][i]
-            y_rescaled = y_values * self.scale_info['y_scale']
-            lower_rescaled = lower_ci * self.scale_info['y_scale']
-            upper_rescaled = upper_ci * self.scale_info['y_scale']
-            
-            results.append((x_rescaled, y_rescaled, lower_rescaled, upper_rescaled))
-        
-        return results
+    #         # Calculate the variance-covariance matrix for this feature
+    #     try:
+    #         ZtZ_inv = np.linalg.inv(Z.T @ Z)
+    #         vcov = ZtZ_inv * self.sigma2
+    #     except np.linalg.LinAlgError:
+    #         # If matrix is singular, use pseudo-inverse
+    #         ZtZ_inv = np.linalg.pinv(Z.T @ Z)
+    #         vcov = ZtZ_inv * self.sigma2
+    #         return vcov
+
     def add_constraints(self,constraint_list,idx):
         for cons in constraint_list:
             cons['left'] = self._scale_data(cons['left'],idx=idx)
@@ -642,10 +600,19 @@ class GAM_light:
 
 
     def predict(self, X_test):
-        y_predict = 0
-        for ii in range(self.n_features):
-            y_predict += self.shapeFunctionOptimizerList[ii].predict(self._scale_data(X_test[:,ii],idx=ii))
-        return self._rescale_data(y_predict,on='y')
+        """Make predictions using the fitted GAM model.
+        
+        Args:
+            X_test: numpy array of shape (n_samples, n_features) containing test data
+            
+        Returns:
+            numpy array of shape (n_samples,) containing predictions
+        """
+        # Get predictions from each shape function
+        predictions = self.predict_shape_functions(X_test,intercept=False)
+        
+        # Sum across features to get final predictions
+        return predictions.sum(axis=1)
     
     def get_para(self):
         paras = []
@@ -658,39 +625,255 @@ class GAM_light:
 
         return paras
     
-    def plot_shape_functions(self, column_name=None, index_set=None, fig=None):
+    def get_shape_function_data(self, column_name=None, index_set=None, intercept = False):
+        """
+        Get the data needed for plotting shape functions.
+        
+        Parameters
+        ----------
+        column_name : list of str, optional
+            Names of the columns/features
+        index_set : list of int, optional
+            Indices of features to get data for
+            
+        Returns
+        -------
+        dict
+            Dictionary containing plotting data for each feature:
+            {feature_name: {'x': x_values, 'y': y_values, 'density': density_values}}
+        """
         if column_name is None:
             if index_set is None:
                 column_name = ['feature_'+str(idx) for idx in range(self.n_features)]
             else:
                 column_name = ['feature_'+str(idx) for idx in index_set]
         
+        if index_set is None:
+            index_set = range(self.n_features)
+            
+        plot_data = {}
+        for idx, col_index in enumerate(index_set):
+            # Get sorted data for this feature
+            sort_index = np.argsort(self.X[:,col_index])
+            x_mark = self.X[:,col_index][sort_index]
+            y_mark = self.shapeFunctionOptimizerList[col_index].predict(x_mark)
+            
+            # Rescale the data
+            x_mark = self._rescale_data(x_mark, idx=col_index)
+            if intercept:
+                y_mark = y_mark*self.scale_info['y_scale']
+            else:
+                y_mark = y_mark*self.scale_info['y_scale']+self.scale_info['y_offset']/self.n_features
+            
+            # Store the data
+            plot_data[column_name[idx]] = {
+                'x': x_mark,
+                'y': y_mark,
+                'density': np.ones(self.X[:,col_index].shape)*(1.5*min(y_mark)-0.5*max(y_mark))
+            }
+            
+        return plot_data
+
+    def plot_shape_functions(self, column_name=None, index_set=None, fig=None, intercept = False):
+        """
+        Plot the shape functions.
+        
+        Parameters
+        ----------
+        column_name : list of str, optional
+            Names of the columns/features
+        index_set : list of int, optional
+            Indices of features to plot
+        fig : matplotlib.figure.Figure, optional
+            Figure to plot on. If None, creates new figure.
+            
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The figure containing the plots
+        """
+        # Get the plotting data
+        plot_data = self.get_shape_function_data(column_name, index_set, intercept)
+        
         # Only create a new figure if one wasn't provided
         if fig is None:
             plt.figure()
         
-        if index_set is None:
-            index_set = range(self.n_features)
-        M = int(round(np.sqrt(len(index_set))))
-        N = int(np.ceil(np.sqrt(len(index_set))))
-        for idx,col_index in enumerate(index_set):
-            sort_index = np.argsort(self.X[:,col_index])
-            plt.subplot(M,N,idx+1)
-            x_mark = self.X[:,col_index][sort_index]
-            y_mark = self.shapeFunctionOptimizerList[col_index].predict(x_mark)
-            x_mark = self._rescale_data(x_mark,idx=col_index)
-            y_mark = y_mark*self.scale_info['y_scale']+self.scale_info['y_offset']/self.n_features
-            plt.plot(x_mark,y_mark)
-            baseline_min = min(y_mark)
-            baseline_max = max(y_mark)
-            plt.plot(x_mark,np.ones(self.X[:,col_index].shape)*(1.5*baseline_min-0.5*baseline_max),'b+')
-            plt.xlabel(column_name[idx])
+        # Calculate subplot layout
+        n_plots = len(plot_data)
+        M = int(round(np.sqrt(n_plots)))
+        N = int(np.ceil(np.sqrt(n_plots)))
+        
+        # Create the plots
+        for idx, (feature_name, data) in enumerate(plot_data.items()):
+            plt.subplot(M, N, idx+1)
+            plt.plot(data['x'], data['y'])
+            plt.plot(data['x'], data['density'], 'b+')
+            plt.xlabel(feature_name)
             plt.ylabel('score')
         
         plt.tight_layout()
         
         # Return the current figure
         return plt.gcf()
+
+    def predict_shape_functions(self, X_test, intercept = False):
+        """Predict individual shape function contributions for each feature.
+        
+        Args:
+            X_test: numpy array of shape (n_samples, n_features) containing test data
+            
+        Returns:
+            numpy array of shape (n_samples, n_features) containing individual shape function predictions
+        """
+        n_samples, n_features = X_test.shape
+        predictions = np.zeros((n_samples, n_features))
+        
+        scale_info = self.scale_info
+        
+        for ii in range(n_features):
+            # Scale the input data for this feature
+            X_scaled = self._scale_data(X_test[:, ii], idx=ii)
+            
+            # Get raw predictions from shape function optimizer
+            feat_pred = self.shapeFunctionOptimizerList[ii].predict(X_scaled)
+            
+            if intercept:
+                # With intercept: just scale the predictions
+                predictions[:, ii] = feat_pred * scale_info['y_scale']
+            else:
+                # Without intercept: scale and add offset divided by n_features
+                predictions[:, ii] = (feat_pred * scale_info['y_scale'] + 
+                                    scale_info['y_offset'] / n_features)
+        
+        return predictions
+
+    def get_confidence_intervals(self, X, alpha=0.05):
+        """Calculate confidence intervals for shape function predictions.
+        
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Data points at which to evaluate the confidence intervals
+        alpha : float, default=0.05
+            Significance level for confidence intervals (e.g., 0.05 for 95% CI)
+        
+        Returns
+        -------
+        dict
+            Dictionary mapping feature indices to tuples of (lower_bound, upper_bound) arrays
+        """
+        from scipy import stats
+        
+        confidence_intervals = {}
+        n_features = X.shape[1]
+        
+        # Calculate degrees of freedom (same for all features)
+        n = len(self.Y)  # number of observations
+        p = len(self.shapeFunctionOptimizerList[0].threshold_list) + 1  # number of parameters
+        df = n - p
+        
+        # Get critical value (same for all features)
+        t_value = stats.t.ppf(1 - alpha/2, df)
+        
+        for i in range(n_features):
+            # Scale the input data for this feature
+            X_scaled = self._scale_data(X[:, i], idx=i)
+            sfo = self.shapeFunctionOptimizerList[i]
+            
+            # Create design matrix for new points
+            Z_new = self._create_design_matrix(X_scaled, sfo.threshold_list)
+            
+            # Calculate predictions
+            predictions = sfo.predict(X_scaled) * self.scale_info['y_scale']
+            
+            # Calculate standard errors for predictions using stored vcov matrix
+            var_pred = np.sum(Z_new * (Z_new @ sfo.vcov), axis=1)
+            std_errors = np.sqrt(var_pred)
+            
+            # Calculate confidence intervals
+            margin = t_value * std_errors
+            lower = predictions - margin
+            upper = predictions + margin
+            
+            confidence_intervals[i] = (lower, upper)
+        
+        return confidence_intervals
+
+    def get_shape_function_confidence_intervals(self, alpha=0.05, intercept = False):
+        """Calculate confidence intervals for the entire shape functions.
+        
+        Parameters
+        ----------
+        alpha : float, default=0.05
+            Significance level for confidence intervals (e.g., 0.05 for 95% CI)
+        intercept : bool, default=False
+            Whether to include intercept in the calculations
+        
+        Returns
+        -------
+        dict
+            Dictionary mapping feature indices to tuples of (x_values, lower_bound, upper_bound)
+        """
+        from scipy import stats
+        
+        confidence_intervals = {}
+        
+        # Calculate degrees of freedom (same for all features)
+        n = len(self.Y)  # number of observations
+        p = len(self.shapeFunctionOptimizerList[0].threshold_list) + 1  # number of parameters
+        df = n - p
+        
+        # Get critical value (same for all features)
+        t_value = stats.t.ppf(1 - alpha/2, df)
+        
+        # Get shape function data
+        shape_data = self.get_shape_function_data(intercept=intercept)
+        
+        for i in range(self.n_features):
+            sfo = self.shapeFunctionOptimizerList[i]
+            
+            # Get x values from shape function data
+            feature_data = shape_data[f'feature_{i}']
+            x_values, y_values = feature_data['x'], feature_data['y']
+            
+            # Scale x values for internal calculations
+            x_scaled = self._scale_data(x_values, idx=i)
+            
+            # Create design matrix for these points
+            Z = self._create_design_matrix(x_scaled, sfo.threshold_list)
+            
+            # Calculate variance-covariance matrix
+            try:
+                ZtZ_inv = np.linalg.inv(Z.T @ Z)
+                vcov = ZtZ_inv * self.sigma2
+            except np.linalg.LinAlgError:
+                # If matrix is singular, use pseudo-inverse
+                ZtZ_inv = np.linalg.pinv(Z.T @ Z)
+                vcov = ZtZ_inv * self.sigma2
+            
+            # Calculate standard errors for predictions
+            var_pred = np.sum(Z * (Z @ vcov), axis=1)
+            std_errors = np.sqrt(var_pred)
+            
+            # Scale standard errors if needed
+            if intercept:
+                std_errors *= self.scale_info['y_scale']
+            
+            # Calculate confidence intervals
+            margin = t_value * std_errors
+            lower = y_values - margin
+            upper = y_values + margin
+            
+            # Store results with original x values
+            confidence_intervals[i] = (x_values, lower, upper)
+        
+        return confidence_intervals
+
+
+
+
+
 
 
 class GAM:
@@ -975,7 +1158,7 @@ class GAM:
         
         return self
     
-    def show(self, data, mode='static', port=8082, waterfall_height="40vh", **kwargs):
+    def show(self, data, mode='static', port=8082, waterfall_height="40vh", intercept = False, **kwargs):
         '''
         mode: 'static' or 'interactive'
         port: only used in interactive mode
@@ -987,47 +1170,39 @@ class GAM:
             return plot_static_gam(self, data, **kwargs)
         elif mode == 'interactive':
             # plot_interactive_gam(self, data, **kwargs)
-            app = create_app(self, data, waterfall_height=waterfall_height)
-            app.run(debug=False, port=port)
+            create_app(self, data, waterfall_height=waterfall_height, port=port, intercept=intercept)
             # return
         else:
             raise ValueError(f"Invalid mode: {mode}. Choose from 'static' or 'interactive'.")
     def get_confidence_intervals(self, X, alpha=0.05):
-        """
-        Get confidence intervals for the shape functions at the given X values.
+        """Calculate confidence intervals for shape function predictions.
         
         Parameters
         ----------
         X : array-like or DataFrame
-            Data points at which to evaluate the confidence intervals.
+            Data points at which to evaluate the confidence intervals
         alpha : float, default=0.05
-            Significance level (e.g., 0.05 for 95% confidence intervals)
-            
+            Significance level for confidence intervals (e.g., 0.05 for 95% CI)
+        
         Returns
         -------
         dict
-            Dictionary mapping feature names to tuples of (x, y, lower_ci, upper_ci)
+            Dictionary mapping feature names to tuples of (lower_bound, upper_bound) arrays
         """
         if self.sfo is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
         
         # Process input X
         if isinstance(X, pd.DataFrame):
-            X_test = X[self.feature_names].values
-        else:
-            X_test = X
+            X = X[self.feature_names].values
+            
+        # Get confidence intervals from GAM_light
+        ci_dict = self.model.get_confidence_intervals(X, alpha)
         
-        # Get confidence intervals from the model
-        ci_results = self.model.get_confidence_intervals(X_test, alpha)
-        
-        # Organize results by feature
-        confidence_intervals = {}
-        for i, feature_name in enumerate(self.feature_names):
-            confidence_intervals[feature_name] = ci_results[i]
-        
-        return confidence_intervals
+        # Map feature indices to feature names
+        return {self.feature_names[i]: ci_values for i, ci_values in ci_dict.items()}
 
-    def get_shape_functions(self):
+    def get_shape_functions(self, intercept = False):
         """
         Get the shape functions for all features.
         
@@ -1039,40 +1214,65 @@ class GAM:
         if self.sfo is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
         
+        # Get shape function data using existing method
+        shape_data = self.model.get_shape_function_data(column_name=self.feature_names, intercept=intercept)
+        
+        # Convert to (x, y) tuples format
         shape_functions = {}
-        for i, feature_name in enumerate(self.feature_names):
-            x_values, y_values = self.model.shapeFunctionOptimizerList[i].get_para()
-            
-            # Rescale the values back to original scale
-            x_rescaled = self.model._rescale_data(x_values, idx=i)
-            y_rescaled = y_values * self.model.scale_info['y_scale'] + self.model.scale_info['y_offset'] / len(self.sfo)
-            
-            shape_functions[feature_name] = (x_rescaled, y_rescaled)
+        for feature_name in self.feature_names:
+            feature_data = shape_data[feature_name]
+            shape_functions[feature_name] = (feature_data['x'], feature_data['y'])
         
         return shape_functions
     
-    def analyze_feature_importance(self):
+
+    def get_shape_predictions(self, X, intercept=False):
         """
-        Analyze the importance of each feature based on the range of its shape function.
+        Get shape function predictions for each feature at given X values.
+        
+        Parameters
+        ----------
+        X : array-like or DataFrame
+            Data points at which to evaluate the shape functions.
+        intercept : bool, default=False
+            Whether to include intercept term in shape function predictions.
+            
+        Returns
+        -------
+        dict
+            Dictionary mapping feature names to their shape function predictions.
+        """
+        if self.sfo is None:
+            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            
+        # Process input X
+        if isinstance(X, pd.DataFrame):
+            X = X[self.feature_names].values
+            
+        # Get predictions from underlying model
+        predictions = self.model.predict_shape_functions(X, intercept=intercept)
+        
+        # Map predictions to feature names
+        return {name: predictions[:, i] for i, name in enumerate(self.feature_names)} 
+
+    def get_shape_function_confidence_intervals(self, alpha=0.05, intercept = False):
+        """Get confidence intervals for the entire shape functions.
+        
+        Parameters
+        ----------
+        alpha : float, default=0.05
+            Significance level for confidence intervals (e.g., 0.05 for 95% CI)
         
         Returns
         -------
-        pandas.DataFrame
-            DataFrame with feature names and their importance scores.
+        dict
+            Dictionary mapping feature names to tuples of (x_values, lower_bound, upper_bound)
         """
         if self.sfo is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
         
-        importances = []
-        for i, feature_name in enumerate(self.feature_names):
-            _, y_values = self.model.shapeFunctionOptimizerList[i].get_para()
-            y_rescaled = y_values * self.model.scale_info['y_scale']
-            importance = np.max(y_rescaled) - np.min(y_rescaled)
-            importances.append(importance)
+        # Get confidence intervals from GAM_light
+        ci_dict = self.model.get_shape_function_confidence_intervals(alpha, intercept)
         
-        importance_df = pd.DataFrame({
-            'Feature': self.feature_names,
-            'Importance': importances
-        })
-        
-        return importance_df.sort_values('Importance', ascending=False) 
+        # Map feature indices to feature names
+        return {self.feature_names[i]: ci_values for i, ci_values in ci_dict.items()} 

@@ -5,6 +5,8 @@ from dash import Dash, Input, Output, callback, html
 import importlib.util
 import subprocess
 import os
+import threading
+import webbrowser
 
 # First, check if dash_vis_components is installed in the environment
 try:
@@ -42,7 +44,7 @@ import threading
 import webbrowser
 
 
-def load_data(model, data):
+def load_data(model, data, intercept=False):
     """
     Convert data to the format required by visualization components.
     
@@ -60,8 +62,11 @@ def load_data(model, data):
     """
     if isinstance(data, pd.DataFrame):
         data = data[model.feature_names].to_numpy()
-    # Get shape functions
-    shape_functions = model.get_shape_functions()
+        
+    # Get shape functions and confidence intervals
+    shape_functions = model.get_shape_functions(intercept=intercept)
+    # point_confidence_intervals = model.get_confidence_intervals(data)
+    shape_confidence_intervals = model.get_shape_function_confidence_intervals(intercept=intercept)
     feature_names = model.feature_names
     
     # Initialize data structures
@@ -70,26 +75,23 @@ def load_data(model, data):
     # For each feature, create the required data format for zip_data
     for feature_name in feature_names:
         x_values, y_values = shape_functions[feature_name]
-        
-        # Sort by x values to ensure proper plotting
         sort_idx = np.argsort(x_values)
-        x_sorted = x_values[sort_idx]
-        y_sorted = y_values[sort_idx]
+        x_ci, lower_ci, upper_ci = shape_confidence_intervals[feature_name]
         
         # Create the data structure for ShapeEnsemble
         feature_data = []
-        for i in range(len(x_sorted)):
+        for i in range(len(x_values)):
             feature_data.append({
-                "x": float(x_sorted[i]),
-                "y": float(y_sorted[i]),
-                "c": [float(y_sorted[i]), float(y_sorted[i])]  # Both elements are the same as y value
+                "x": float(x_values[sort_idx][i]),
+                "y": float(y_values[sort_idx][i]),
+                "c": [float(lower_ci[sort_idx][i]), float(upper_ci[sort_idx][i])]  # Use confidence interval bounds
             })
         
         zip_data[feature_name] = feature_data
     
     # Create data_dict with the required structure
     data_dict = {
-        "intercept": float(model.model.scale_info['y_offset']),
+        "intercept": float(model.model.scale_info['y_offset']) if intercept else 0,
         "r2": 0.95,
         "feature_info": {}
     }
@@ -105,10 +107,8 @@ def load_data(model, data):
     # Create data_waterfall for each row in the provided data
     data_waterfall = []
     predictions = model.predict(data)
-    shape_predictions = {}
-    for feature_name_idx, feature_name in enumerate(feature_names):
-        y_predict = model.model.shapeFunctionOptimizerList[feature_name_idx].predict(model.model._scale_data(data[:,feature_name_idx], on='x', idx=feature_name_idx))
-        shape_predictions[feature_name] = model.model._rescale_data(y_predict, on='y')
+    shape_predictions = model.get_shape_predictions(data, intercept=intercept)
+    
     for idx in range(len(data)):
         instance = {
             "id": idx,
@@ -116,10 +116,11 @@ def load_data(model, data):
             "pred_y": float(predictions[idx]),
             "data": []
         }
-        for feature_name_idx, feature_name in enumerate(feature_names):
+        for feature_name in feature_names:
+            # lower_bound, upper_bound = point_confidence_intervals[feature_name]
             instance["data"].append({
                 "fea_idx": feature_name,
-                "fea_val": float(data[idx,feature_name_idx]),
+                "fea_val": float(data[idx, feature_names.index(feature_name)]),
                 "pdep": float(shape_predictions[feature_name][idx]),
                 "confi_u_X": float(shape_predictions[feature_name][idx]),
                 "confi_l_X": float(shape_predictions[feature_name][idx])
@@ -128,14 +129,27 @@ def load_data(model, data):
     
     return zip_data, data_dict, data_waterfall
 
-def create_app(model, data, index=0, waterfall_height = "40vh"):
+def create_app(model, data, index=0, intercept = False, waterfall_height="40vh", port=8050, auto_open=True):
     """
-    Create a Dash application for interactive visualization of the GAM model.
+    Create and run a Dash application for interactive visualization of the GAM model.
     
     Parameters
+    ----------
+    model : GAM
+        The fitted GAM model
+    data : pandas.DataFrame or numpy.ndarray
+        Data to visualize
+    index : int, default=0
+        Initial index to display
+    waterfall_height : str, default="40vh"
+        Height of the waterfall plot
+    port : int, default=8050
+        Port to run the application on
+    auto_open : bool, default=True
+        Whether to automatically open the browser
     """
     if model is not None:
-        zip_data, model_info, data_waterfall = load_data(model, data)
+        zip_data, model_info, data_waterfall = load_data(model, data, intercept)
     else:
         zip_data = {'x1': [{'x': 1, 'y': 1, 'c': [1, 1]}, 
                         {'x': 2, 'y': 2, 'c': [2, 2]}],
@@ -198,9 +212,14 @@ def create_app(model, data, index=0, waterfall_height = "40vh"):
     def update_hovered_feature_index(hoveredFeatureIndex):
         return hoveredFeatureIndex
     
+    if auto_open:
+        # Open the browser after a short delay to ensure server has started
+        timer = threading.Timer(0.5, lambda: webbrowser.open_new(f"http://127.0.0.1:{port}/"))
+        timer.start()
+    
+    app.run(debug=False, port=port)
+    
     return app
 
-
 if __name__ == "__main__":
-    app = create_app(None, None)
-    app.run(debug=False, port=8050)
+    create_app(None, None, index=1)

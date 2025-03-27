@@ -4,10 +4,10 @@
 # import mindxlib.visualization.dash_vis_components
 # from mindxlib.visualization.dash_vis_components import CalHeatmap, LineChart, ShapeEnsemble, Waterfall
 from mindxlib.visualization.interactive import create_app
-app = create_app(None, None)
+
 
 # 在外部显式启动服务
 if __name__ == "__main__":
     # import webbrowser
     # webbrowser.open("http://localhost:8050")
-    app.run(debug=False, port=8082)
+    create_app(None, None)

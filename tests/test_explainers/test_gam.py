@@ -31,10 +31,10 @@ def generate_synthetic_data(n_samples=1000, noise_level=0.1, random_state=42):
     
     return X, y
 
-def test_pandas_basic():
+def test_pandas_basic(X,y):
     """Test basic functionality of the GAM explainer"""
     # Generate synthetic data
-    X, y = generate_synthetic_data(n_samples=1000, noise_level=0.1)
+    
     
     # Split into train and test sets
     train_size = int(0.8 * len(X))
@@ -44,8 +44,8 @@ def test_pandas_basic():
     # Create and fit GAM model
     gam = GAM(max_iter=200, lambda_1=0.01, verbose=True)
     gam.fit(X_train, y_train)
-    shape_functions = gam.get_shape_functions()
-    gam.show(X_test,mode='interactive')
+    
+    # gam.show(X_test,mode='interactive')
     y_pred = gam.predict(X_test)
     
     # Calculate metrics
@@ -58,10 +58,7 @@ def test_pandas_basic():
     # The model should achieve reasonable performance
     assert r2 > 0.8, f"R² score too low: {r2}"
     
-    # Get feature importance
-    importance = gam.analyze_feature_importance()
-    print("Feature Importance:")
-    print(importance)
+
     
     # # Check that the shape functions match our expectations
     # shape_functions = gam.get_shape_functions()
@@ -206,8 +203,13 @@ def test_gam_constraints():
 
 
     # Run basic test
-gam = test_pandas_basic()
+X, y = generate_synthetic_data(n_samples=1000, noise_level=0.1)
+gam = test_pandas_basic(X,y)
 # gam = test_gam_constraints()
-gam.show(mode='interactive')
+train_size = int(0.8 * len(X))
+X_train, X_test = X[:train_size], X[train_size:]
+y_train, y_test = y[:train_size], y[train_size:]
+gam.show(data = X_test,mode='interactive',intercept=True)
+# gam.show(data = X_test, mode='static')
 
 
