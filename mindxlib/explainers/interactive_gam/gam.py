@@ -7,6 +7,8 @@ from scipy.linalg import circulant
 from scipy.optimize import nnls
 import copy
 import numba as nb
+from mindxlib.visualization.plots import plot_static_gam
+from mindxlib.visualization.interactive import create_app
 
 @nb.jit(nopython=True)
 def ReLu_product(x,w,split,index_list):
@@ -447,7 +449,7 @@ class GAM_light:
 
     def _init_model(self, X, Y, sample_weights):
         self.X = X
-        self.Y = Y
+        self.Y = Y  # Original Y is stored
         self.scale_info = {}
         self.scale_info['x_offset'] = np.mean(self.X,axis=0)
         self.scale_info['x_scale'] = np.std(self.X,axis=0)+1e-15
@@ -465,7 +467,7 @@ class GAM_light:
             self.sample_weights = sample_weights.flatten()
         self.n_features = self.X.shape[1]
         self.fun_dict = np.zeros(self.X.T.shape)
-        self.res = self.Y
+        self.res = self.Y.copy()  # Create a copy instead of a reference
         self.shapeFunctionOptimizerList = []
         for i in range(self.X.shape[1]):
             SFO = shapeFunctionOptimizer(block_size=self.block_size,\
@@ -489,7 +491,7 @@ class GAM_light:
     
         
 
-    def fit(self, X, Y, sample_weights=None,category_features=None,mode='train',max_iter=None):
+    def fit(self, X, Y, sample_weights=None, category_features=None, mode='train', max_iter=None):
         if mode == 'train':
             self._init_model(X, Y, sample_weights)
             max_iter = self.max_iter
@@ -522,6 +524,78 @@ class GAM_light:
                     last_train_loss = train_loss
         for ii in range(self.n_features):
             self.shapeFunctionOptimizerList[ii].prepare_prediction()
+        if mode == 'train':
+            self._calculate_residuals()
+
+    def _create_design_matrix(self, X_scaled, threshold_list):
+        """Create design matrix for basis functions representation.
+        
+        Parameters
+        ----------
+        X_scaled : array-like
+            Scaled input data
+        threshold_list : array-like
+            Threshold values for the ReLU basis functions
+            
+        Returns
+        -------
+        array-like
+            Design matrix Z where each row is [1, x, max(x-t1,0), max(x-t2,0), ...]
+        """
+        n_samples = len(X_scaled)
+        n_basis = len(threshold_list) + 2  # +2 for intercept and linear term
+        
+        # Initialize design matrix
+        Z = np.zeros((n_samples, n_basis))
+        
+        # Set intercept term
+        Z[:, 0] = 1
+        
+        # Set linear term
+        Z[:, 1] = X_scaled
+        
+        # Set ReLU basis terms
+        for j, threshold in enumerate(threshold_list):
+            Z[:, j+2] = np.maximum(X_scaled - threshold, 0)
+        
+        return Z
+
+    def _calculate_residuals(self):
+        y_pred = self.predict(self.X * self.scale_info['x_scale'] + self.scale_info['x_offset'])
+        residuals = (self.Y * self.scale_info['y_scale'] + self.scale_info['y_offset']) - y_pred
+        
+        # Estimate the residual variance (sigma^2)
+        n = len(residuals)
+        p = sum([len(sfo.relu_weight) for sfo in self.shapeFunctionOptimizerList])
+        self.sigma2 = np.sum(residuals**2) / (n - p)
+
+    
+    # def _calculate_variance_covariance_matrix(self,x_scaled, col = 0):
+    #     """Calculate the variance-covariance matrix for confidence intervals."""
+    #     # Get the residuals
+    #     if col>=self.n_features:
+    #         raise ValueError(f"Column index {col} is out of range for the number of features.")
+
+        
+    #     # Store the design matrices and parameter vectors for each feature
+    #     self.design_matrices = []
+    #     self.param_vectors = []
+
+    #     sfo = self.shapeFunctionOptimizerList[col]
+
+    #     Z = self._create_design_matrix(x_scaled, sfo.threshold_list)
+            
+            
+            
+    #         # Calculate the variance-covariance matrix for this feature
+    #     try:
+    #         ZtZ_inv = np.linalg.inv(Z.T @ Z)
+    #         vcov = ZtZ_inv * self.sigma2
+    #     except np.linalg.LinAlgError:
+    #         # If matrix is singular, use pseudo-inverse
+    #         ZtZ_inv = np.linalg.pinv(Z.T @ Z)
+    #         vcov = ZtZ_inv * self.sigma2
+    #         return vcov
 
     def add_constraints(self,constraint_list,idx):
         for cons in constraint_list:
@@ -531,10 +605,20 @@ class GAM_light:
 
 
     def predict(self, X_test):
-        y_predict = 0
-        for ii in range(self.n_features):
-            y_predict += self.shapeFunctionOptimizerList[ii].predict(self._scale_data(X_test[:,ii],idx=ii))
-        return self._rescale_data(y_predict,on='y')
+        """Make predictions using the fitted GAM model.
+        
+        Args:
+            X_test: numpy array of shape (n_samples, n_features) containing test data
+            
+        Returns
+        -------
+        numpy array of shape (n_samples,) containing predictions
+        """
+        # Get predictions from each shape function
+        predictions = self.predict_shape_functions(X_test,intercept=False)
+        
+        # Sum across features to get final predictions
+        return predictions.sum(axis=1)
     
     def get_para(self):
         paras = []
@@ -547,39 +631,255 @@ class GAM_light:
 
         return paras
     
-    def plot_shape_functions(self, column_name=None, index_set=None, fig=None):
+    def get_shape_function_data(self, column_name=None, index_set=None, intercept = False):
+        """
+        Get the data needed for plotting shape functions.
+        
+        Parameters
+        ----------
+        column_name : list of str, optional
+            Names of the columns/features
+        index_set : list of int, optional
+            Indices of features to get data for
+            
+        Returns
+        -------
+        dict
+            Dictionary containing plotting data for each feature:
+            {feature_name: {'x': x_values, 'y': y_values, 'density': density_values}}
+        """
         if column_name is None:
             if index_set is None:
                 column_name = ['feature_'+str(idx) for idx in range(self.n_features)]
             else:
                 column_name = ['feature_'+str(idx) for idx in index_set]
         
+        if index_set is None:
+            index_set = range(self.n_features)
+            
+        plot_data = {}
+        for idx, col_index in enumerate(index_set):
+            # Get sorted data for this feature
+            sort_index = np.argsort(self.X[:,col_index])
+            x_mark = self.X[:,col_index][sort_index]
+            y_mark = self.shapeFunctionOptimizerList[col_index].predict(x_mark)
+            
+            # Rescale the data
+            x_mark = self._rescale_data(x_mark, idx=col_index)
+            if intercept:
+                y_mark = y_mark*self.scale_info['y_scale']
+            else:
+                y_mark = y_mark*self.scale_info['y_scale']+self.scale_info['y_offset']/self.n_features
+            
+            # Store the data
+            plot_data[column_name[idx]] = {
+                'x': x_mark,
+                'y': y_mark,
+                'density': np.ones(self.X[:,col_index].shape)*(1.5*min(y_mark)-0.5*max(y_mark))
+            }
+            
+        return plot_data
+
+    def plot_shape_functions(self, column_name=None, index_set=None, fig=None, intercept = False):
+        """
+        Plot the shape functions.
+        
+        Parameters
+        ----------
+        column_name : list of str, optional
+            Names of the columns/features
+        index_set : list of int, optional
+            Indices of features to plot
+        fig : matplotlib.figure.Figure, optional
+            Figure to plot on. If None, creates new figure.
+            
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The figure containing the plots
+        """
+        # Get the plotting data
+        plot_data = self.get_shape_function_data(column_name, index_set, intercept)
+        
         # Only create a new figure if one wasn't provided
         if fig is None:
             plt.figure()
         
-        if index_set is None:
-            index_set = range(self.n_features)
-        M = int(round(np.sqrt(len(index_set))))
-        N = int(np.ceil(np.sqrt(len(index_set))))
-        for idx,col_index in enumerate(index_set):
-            sort_index = np.argsort(self.X[:,col_index])
-            plt.subplot(M,N,idx+1)
-            x_mark = self.X[:,col_index][sort_index]
-            y_mark = self.shapeFunctionOptimizerList[col_index].predict(x_mark)
-            x_mark = self._rescale_data(x_mark,idx=col_index)
-            y_mark = y_mark*self.scale_info['y_scale']+self.scale_info['y_offset']/self.n_features
-            plt.plot(x_mark,y_mark)
-            baseline_min = min(y_mark)
-            baseline_max = max(y_mark)
-            plt.plot(x_mark,np.ones(self.X[:,col_index].shape)*(1.5*baseline_min-0.5*baseline_max),'b+')
-            plt.xlabel(column_name[idx])
+        # Calculate subplot layout
+        n_plots = len(plot_data)
+        M = int(round(np.sqrt(n_plots)))
+        N = int(np.ceil(np.sqrt(n_plots)))
+        
+        # Create the plots
+        for idx, (feature_name, data) in enumerate(plot_data.items()):
+            plt.subplot(M, N, idx+1)
+            plt.plot(data['x'], data['y'])
+            plt.plot(data['x'], data['density'], 'b+')
+            plt.xlabel(feature_name)
             plt.ylabel('score')
         
         plt.tight_layout()
         
         # Return the current figure
         return plt.gcf()
+
+    def predict_shape_functions(self, X_test, intercept = False):
+        """Predict individual shape function contributions for each feature.
+        
+        Args:
+            X_test: numpy array of shape (n_samples, n_features) containing test data
+            
+        Returns
+        -------
+        numpy array of shape (n_samples, n_features) containing individual shape function predictions
+        """
+        n_samples, n_features = X_test.shape
+        predictions = np.zeros((n_samples, n_features))
+        
+        scale_info = self.scale_info
+        
+        for ii in range(n_features):
+            # Scale the input data for this feature
+            X_scaled = self._scale_data(X_test[:, ii], idx=ii)
+            
+            # Get raw predictions from shape function optimizer
+            feat_pred = self.shapeFunctionOptimizerList[ii].predict(X_scaled)
+            
+            if intercept:
+                # With intercept: just scale the predictions
+                predictions[:, ii] = feat_pred * scale_info['y_scale']
+            else:
+                # Without intercept: scale and add offset divided by n_features
+                predictions[:, ii] = (feat_pred * scale_info['y_scale'] + 
+                                    scale_info['y_offset'] / n_features)
+        
+        return predictions
+
+    def get_confidence_intervals(self, X, alpha=0.05):
+        """Calculate confidence intervals for shape function predictions.
+        
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Data points at which to evaluate the confidence intervals
+        alpha : float, default=0.05
+            Significance level for confidence intervals (e.g., 0.05 for 95% CI)
+        
+        Returns
+        -------
+        dict
+            Dictionary mapping feature indices to tuples of (lower_bound, upper_bound) arrays
+        """
+        from scipy import stats
+        
+        confidence_intervals = {}
+        n_features = X.shape[1]
+        
+        # Calculate degrees of freedom (same for all features)
+        n = len(self.Y)  # number of observations
+        p = len(self.shapeFunctionOptimizerList[0].threshold_list) + 1  # number of parameters
+        df = n - p
+        
+        # Get critical value (same for all features)
+        t_value = stats.t.ppf(1 - alpha/2, df)
+        
+        for i in range(n_features):
+            # Scale the input data for this feature
+            X_scaled = self._scale_data(X[:, i], idx=i)
+            sfo = self.shapeFunctionOptimizerList[i]
+            
+            # Create design matrix for new points
+            Z_new = self._create_design_matrix(X_scaled, sfo.threshold_list)
+            
+            # Calculate predictions
+            predictions = sfo.predict(X_scaled) * self.scale_info['y_scale']
+            
+            # Calculate standard errors for predictions using stored vcov matrix
+            var_pred = np.sum(Z_new * (Z_new @ sfo.vcov), axis=1)
+            # 确保方差非负
+            var_pred = np.maximum(var_pred, 0)  # 添加这行来处理数值不稳定性
+            std_errors = np.sqrt(var_pred)
+            
+            # Calculate confidence intervals
+            margin = t_value * std_errors
+            lower = predictions - margin
+            upper = predictions + margin
+            
+            confidence_intervals[i] = (lower, upper)
+        
+        return confidence_intervals
+
+    def get_shape_function_confidence_intervals(self, alpha=0.05, intercept=False):
+        """Calculate confidence intervals for the entire shape functions using basis representation.
+        
+        Parameters
+        ----------
+        alpha : float, default=0.05
+            Significance level for confidence intervals
+        intercept : bool, default=False
+            Whether to include intercept in calculations
+        
+        Returns
+        -------
+        dict
+            Dictionary mapping feature indices to tuples of (x_values, lower_bound, upper_bound)
+        """
+        from scipy import stats
+        
+        confidence_intervals = {}
+        
+        # Calculate degrees of freedom
+        n = len(self.Y)  # number of observations
+        p = len(self.shapeFunctionOptimizerList[0].threshold_list) + 2  # number of parameters (+2 for intercept and linear term)
+        df = n - p
+        
+        # Get critical value
+        t_value = stats.t.ppf(1 - alpha/2, df)
+        
+        # Get shape function data
+        shape_data = self.get_shape_function_data(intercept=intercept)
+        
+        for i in range(self.n_features):
+            sfo = self.shapeFunctionOptimizerList[i]
+            
+            # Get x values from shape function data
+            feature_data = shape_data[f'feature_{i}']
+            x_values, y_values = feature_data['x'], feature_data['y']
+            
+            # Scale x values for internal calculations
+            x_scaled = self._scale_data(x_values, idx=i)
+            
+            # Create design matrix for these points using basis functions
+            Z = self._create_design_matrix(x_scaled, sfo.threshold_list)
+            
+            try:
+                ZtZ_inv = np.linalg.inv(Z.T @ Z)
+                vcov = ZtZ_inv * self.sigma2
+            except np.linalg.LinAlgError:
+                # If matrix is singular, use pseudo-inverse
+                ZtZ_inv = np.linalg.pinv(Z.T @ Z)
+                vcov = ZtZ_inv * self.sigma2
+            
+            # Calculate standard errors for predictions using basis representation
+            var_pred = np.sum(Z * (Z @ vcov), axis=1)
+            var_pred = np.maximum(var_pred, 0)  # 添加这行来处理数值不稳定性
+            std_errors = np.sqrt(var_pred)
+            std_errors *= self.scale_info['y_scale']
+            
+            
+            margin = t_value * std_errors
+            lower = y_values - margin
+            upper = y_values + margin
+            
+            
+            confidence_intervals[i] = (x_values, lower, upper)
+        
+        return confidence_intervals
+
+
+
+
+
 
 
 class GAM:
@@ -632,6 +932,11 @@ class GAM:
         self.feature_prefix = feature_prefix
         self.feature_names = None
         self.sfo = None  # Will store shape function optimizers after fitting
+        
+        # Add visualization data storage
+        self._viz_data = None
+        self._viz_model_info = None
+        self._viz_waterfall = None
     
     def fit(self, X, y, sample_weights=None, category_features=None):
         """
@@ -691,8 +996,13 @@ class GAM:
             Predicted values.
         """
         if isinstance(X, pd.DataFrame):
-            X = X.values
-        
+            missing_features = set(self.feature_names) - set(X.columns)
+            if missing_features:
+                raise ValueError(f"Missing required features: {missing_features}")
+            X = X[self.feature_names].values
+        elif isinstance(X, np.ndarray):
+            if X.shape[1] != len(self.feature_names):
+                raise ValueError(f"Expected {len(self.feature_names)} features but got {X.shape[1]}")
         return self.model.predict(X)
     
     def _process_constraint_type(self, constraint_type):
@@ -859,210 +1169,158 @@ class GAM:
         
         return self
     
-    def show(self, feature_indices=None, figsize=(12, 10), display=True, 
-             title=None, xlabel=None, ylabel="Attribution", show_density=True, 
-             color='#1f77b4', linestyle='-', linewidth=2, alpha=0.7, 
-             density_color='#ff7f0e', density_alpha=0.3, density_markersize=5,
-             use_color_cycle=False, save_path=None, dpi=300, xlim=None, ylim=None, 
-             layout=None, **kwargs):
+    def _prepare_viz_data(self, data, intercept=False, ci=True, alpha=0.05):
         """
-        Plot the shape functions for the specified features.
+        Prepare data for visualization components.
         
         Parameters
         ----------
-        feature_indices : int, str, or list, optional
-            Indices or names of features to plot. If None, all features are plotted.
-            Can be a single integer index, a single string feature name, or a list 
-            containing a mix of integer indices and string feature names.
-        figsize : tuple, default=(12, 10)
-            Figure size.
-        display : bool, default=True
-            Whether to display the figure immediately using plt.show().
-        title : str or list of str, optional
-            Title for the plot or list of titles for each subplot.
-        xlabel : str or list of str, optional
-            Label for x-axis or list of labels for each subplot. If None, feature names are used.
-        ylabel : str, default="Attribution"
-            Label for y-axis.
-        show_density : bool, default=True
-            Whether to show density of data points as a rug plot.
-        color : str or list, default='#1f77b4'
-            Color for the line or list of colors for each subplot. By default, all plots use the same blue color.
-        linestyle : str or list, default='-'
-            Line style or list of line styles for each subplot.
-        linewidth : float or list, default=2
-            Line width or list of line widths for each subplot.
-        alpha : float, default=0.7
-            Alpha transparency for the line plot.
-        density_color : str or list, default='#ff7f0e'
-            Color for the density plot. By default, all density plots use the same orange color.
-        density_alpha : float, default=0.3
-            Alpha transparency for the density plot.
-        density_markersize : float, default=5
-            Size of markers in the density plot.
-        use_color_cycle : bool, default=False
-            If True, uses matplotlib's default color cycle for lines instead of a single color.
-        save_path : str, optional
-            Path to save the figure. If provided, the figure will be saved to this location.
-            The file format is determined by the file extension (e.g., .png, .pdf, .svg).
-        dpi : int, default=300
-            Resolution of the saved figure in dots per inch.
-        xlim : tuple or list of tuples, optional
-            The x limits (min, max) for the plot or a list of tuples for each subplot.
-        ylim : tuple or list of tuples, optional
-            The y limits (min, max) for the plot or a list of tuples for each subplot.
-        layout : tuple, optional
-            The layout of subplots as (rows, cols). If None, a square-ish layout is used.
-        **kwargs : dict
-            Additional keyword arguments to pass to matplotlib.
+        data : pandas.DataFrame or numpy.ndarray
+            Data to visualize.
+        intercept : bool, default=False
+            Whether to include intercept in calculations.
+        ci : bool, default=True
+            Whether to include confidence intervals.
+        alpha : float, default=0.05
+            Significance level for confidence intervals.
             
         Returns
         -------
-        fig : matplotlib.figure.Figure
-            The figure object.
+        tuple
+            (zip_data, data_dict, data_waterfall) formatted for visualization
+        """
+        if isinstance(data, pd.DataFrame):
+            data = data[self.feature_names].to_numpy()
+        
+        # Get shape functions and confidence intervals
+        shape_functions = self.get_shape_functions(intercept=intercept)
+        shape_confidence_intervals = self.get_shape_function_confidence_intervals(alpha=alpha, intercept=intercept)
+        
+        # Initialize data structures
+        zip_data = {}
+        
+        # For each feature, create the required data format for zip_data
+        for feature_name in self.feature_names:
+            x_values, y_values = shape_functions[feature_name]
+            sort_idx = np.argsort(x_values)
+            x_ci, lower_ci, upper_ci = shape_confidence_intervals[feature_name]
+            
+            # Create the data structure for ShapeEnsemble
+            feature_data = []
+            for i in range(len(x_values)):
+                feature_data.append({
+                    "x": float(x_values[sort_idx][i]),
+                    "y": float(y_values[sort_idx][i]),
+                    "c": [float(lower_ci[sort_idx][i]), float(upper_ci[sort_idx][i])] \
+                        if ci else [float(y_values[sort_idx][i]), float(y_values[sort_idx][i])]
+                })
+            
+            zip_data[feature_name] = feature_data
+        
+        # Create data_dict with the required structure
+        data_dict = {
+            "intercept": float(self.model.scale_info['y_offset']) if intercept else 0,
+            "r2": 0.95,
+            "feature_info": {}
+        }
+        
+        # Add feature contributions to data_dict
+        for feature_name in self.feature_names:
+            data_dict['feature_info'][feature_name] = {
+                "name": feature_name,
+                "display": feature_name,
+                "type": "numeric"
+            }
+        
+        # Create data_waterfall for each row in the provided data
+        data_waterfall = []
+        predictions = self.predict(data)
+        shape_predictions = self.get_shape_predictions(data, intercept=intercept)
+        
+        for idx in range(len(data)):
+            instance = {
+                "id": idx,
+                "y": 0,
+                "pred_y": float(predictions[idx]),
+                "data": []
+            }
+            for feature_name in self.feature_names:
+                instance["data"].append({
+                    "fea_idx": feature_name,
+                    "fea_val": float(data[idx, self.feature_names.index(feature_name)]),
+                    "pdep": float(shape_predictions[feature_name][idx]),
+                    "confi_u_X": float(shape_predictions[feature_name][idx]),
+                    "confi_l_X": float(shape_predictions[feature_name][idx])
+                })
+            data_waterfall.append(instance)
+        self._viz_data = zip_data
+        self._viz_model_info = data_dict
+        self._viz_waterfall = data_waterfall
+        return zip_data, data_dict, data_waterfall
+
+    def show(self, data, mode='static', port=8082, waterfall_height="40vh", intercept=False, auto_open=True, ci=True, alpha=0.05, **kwargs):
+        '''
+        mode: 'static' or 'interactive'
+        port: only used in interactive mode
+        waterfall_height: only used in interactive mode. Height of the waterfall component in interactive mode (e.g., "40vh", "300px")
+        auto_open: only used in interactive mode. Whether to open the app automatically
+        ci: only used in interactive mode. Whether to show the confidence intervals
+        alpha: only used in interactive mode. default=0.05. Significance level for confidence intervals
+        '''
+        if self.sfo is None:
+            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            
+        if mode == 'static':
+            return plot_static_gam(self, data, **kwargs)
+        elif mode == 'interactive':
+            # Generate visualization data if not already stored
+            if (self._viz_data is None or 
+                self._viz_model_info is None or 
+                self._viz_waterfall is None):
+                self._viz_data, self._viz_model_info, self._viz_waterfall = self._prepare_viz_data(
+                    data, intercept=intercept, ci=ci, alpha=alpha
+                )
+            
+            create_app(
+                self, data, 
+                waterfall_height=waterfall_height, 
+                port=port, 
+                intercept=intercept, 
+                auto_open=auto_open, 
+                ci=ci
+            )
+        else:
+            raise ValueError(f"Invalid mode: {mode}. Choose from 'static' or 'interactive'.")
+
+    def get_confidence_intervals(self, X, alpha=0.05):
+        """Calculate confidence intervals for shape function predictions.
+        
+        Parameters
+        ----------
+        X : array-like or DataFrame
+            Data points at which to evaluate the confidence intervals
+        alpha : float, default=0.05
+            Significance level for confidence intervals (e.g., 0.05 for 95% CI)
+        
+        Returns
+        -------
+        dict
+            Dictionary mapping feature names to tuples of (lower_bound, upper_bound) arrays
         """
         if self.sfo is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
         
-        # Process feature indices
-        if feature_indices is None:
-            # Use all features
-            indices = list(range(len(self.feature_names)))
-        else:
-            # Convert to list if a single index/name is provided
-            if isinstance(feature_indices, (int, str)):
-                feature_indices = [feature_indices]
+        # Process input X
+        if isinstance(X, pd.DataFrame):
+            X = X[self.feature_names].values
             
-            # Convert any feature names to indices
-            indices = []
-            for idx in feature_indices:
-                if isinstance(idx, str):
-                    if idx in self.feature_names:
-                        indices.append(self.feature_names.index(idx))
-                elif isinstance(idx, int):
-                    if 0 <= idx < len(self.feature_names):
-                        indices.append(idx)
-                else:
-                    raise ValueError(f"Feature identifier must be a string or integer, got {type(idx)}")
+        # Get confidence intervals from GAM_light
+        ci_dict = self.model.get_confidence_intervals(X, alpha)
         
-        # Create a figure with the specified size
-        fig = plt.figure(figsize=figsize)
-        
-        # Prepare plot parameters
-        n_plots = len(indices)
-        
-        # Determine subplot layout
-        if layout is None:
-            # Default to square-ish layout
-            M = int(round(np.sqrt(n_plots)))
-            N = int(np.ceil(n_plots / M))
-        else:
-            # Use specified layout
-            M, N = layout
-            if M * N < n_plots:
-                print(f"Warning: Layout {layout} can only fit {M*N} plots, but {n_plots} were requested.")
-                # Adjust to fit all plots
-                N = int(np.ceil(n_plots / M))
-        
-        # Handle list or single value for plot parameters
-        def ensure_list(param, n):
-            if isinstance(param, list):
-                return param
-            else:
-                return [param] * n
-        
-        # Use matplotlib's default color cycle if requested
-        if use_color_cycle:
-            prop_cycle = plt.rcParams['axes.prop_cycle']
-            colors = prop_cycle.by_key()['color']
-            # Repeat the color cycle if needed
-            colors = [colors[i % len(colors)] for i in range(n_plots)]
-        else:
-            colors = ensure_list(color, n_plots)
-        
-        linestyles = ensure_list(linestyle, n_plots)
-        linewidths = ensure_list(linewidth, n_plots)
-        
-        # Handle density colors
-        density_colors = ensure_list(density_color, n_plots)
-        
-        # Handle titles and xlabels
-        if title is not None:
-            titles = ensure_list(title, n_plots)
-        else:
-            titles = [None] * n_plots
-        
-        if xlabel is not None:
-            xlabels = ensure_list(xlabel, n_plots)
-        else:
-            xlabels = [self.feature_names[i] for i in indices]
-        
-        # Handle axis limits
-        if xlim is not None:
-            xlims = ensure_list(xlim, n_plots)
-        else:
-            xlims = [None] * n_plots
-        
-        if ylim is not None:
-            ylims = ensure_list(ylim, n_plots)
-        else:
-            ylims = [None] * n_plots
-        
-        # Create subplots
-        for i, (idx, col_index) in enumerate(enumerate(indices)):
-            if i < M * N:  # Only create plots that fit in the layout
-                ax = plt.subplot(M, N, i+1)
-                
-                # Get data for the feature
-                sort_index = np.argsort(self.model.X[:, col_index])
-                x_mark = self.model.X[:, col_index][sort_index]
-                y_mark = self.model.shapeFunctionOptimizerList[col_index].predict(x_mark)
-                
-                # Rescale data
-                x_mark = self.model._rescale_data(x_mark, idx=col_index)
-                y_mark = y_mark * self.model.scale_info['y_scale'] + self.model.scale_info['y_offset'] / len(self.sfo)
-                
-                # Plot shape function
-                ax.plot(x_mark, y_mark, color=colors[i], linestyle=linestyles[i], 
-                        linewidth=linewidths[i], alpha=alpha, **kwargs)
-                
-                # Show density if requested
-                if show_density:
-                    # Get original data for density plot
-                    x_orig = self.model._rescale_data(self.model.X[:, col_index], idx=col_index)
-                    
-                    # Add rug plot at the bottom
-                    baseline = min(y_mark) - 0.1 * (max(y_mark) - min(y_mark))
-                    ax.plot(x_orig, np.ones_like(x_orig) * baseline, '|', 
-                            color=density_colors[i], alpha=density_alpha, markersize=density_markersize)
-                
-                # Set labels and title
-                ax.set_xlabel(xlabels[i])
-                ax.set_ylabel(ylabel)
-                if titles[i]:
-                    ax.set_title(titles[i])
-                
-                # Set axis limits if provided
-                if xlims[i] is not None:
-                    ax.set_xlim(xlims[i])
-                if ylims[i] is not None:
-                    ax.set_ylim(ylims[i])
-        
-        plt.tight_layout()
-        
-        # Save the figure if a path is provided
-        if save_path is not None:
-            plt.savefig(save_path, dpi=dpi, bbox_inches='tight')
-            print(f"Figure saved to {save_path}")
-        
-        # Display the figure if requested
-        if display:
-            plt.show()
-        
-        # Return the figure
-        return fig
+        # Map feature indices to feature names
+        return {self.feature_names[i]: ci_values for i, ci_values in ci_dict.items()}
 
-    def get_shape_functions(self):
+    def get_shape_functions(self, intercept = False):
         """
         Get the shape functions for all features.
         
@@ -1074,40 +1332,205 @@ class GAM:
         if self.sfo is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
         
+        # Get shape function data using existing method
+        shape_data = self.model.get_shape_function_data(column_name=self.feature_names, intercept=intercept)
+        
+        # Convert to (x, y) tuples format
         shape_functions = {}
-        for i, feature_name in enumerate(self.feature_names):
-            x_values, y_values = self.model.shapeFunctionOptimizerList[i].get_para()
-            
-            # Rescale the values back to original scale
-            x_rescaled = self.model._rescale_data(x_values, idx=i)
-            y_rescaled = y_values * self.model.scale_info['y_scale'] + self.model.scale_info['y_offset'] / len(self.sfo)
-            
-            shape_functions[feature_name] = (x_rescaled, y_rescaled)
+        for feature_name in self.feature_names:
+            feature_data = shape_data[feature_name]
+            shape_functions[feature_name] = (feature_data['x'], feature_data['y'])
         
         return shape_functions
     
-    def analyze_feature_importance(self):
+
+    def get_shape_predictions(self, X, intercept=False):
         """
-        Analyze the importance of each feature based on the range of its shape function.
+        Get shape function predictions for each feature at given X values.
+        
+        Parameters
+        ----------
+        X : array-like or DataFrame
+            Data points at which to evaluate the shape functions.
+        intercept : bool, default=False
+            Whether to include intercept term in shape function predictions.
+            
+        Returns
+        -------
+        dict
+            Dictionary mapping feature names to their shape function predictions.
+        """
+        if self.sfo is None:
+            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            
+        # Process input X
+        if isinstance(X, pd.DataFrame):
+            X = X[self.feature_names].values
+            
+        # Get predictions from underlying model
+        predictions = self.model.predict_shape_functions(X, intercept=intercept)
+        
+        # Map predictions to feature names
+        return {name: predictions[:, i] for i, name in enumerate(self.feature_names)} 
+
+    def get_shape_function_confidence_intervals(self, alpha=0.05, intercept=False):
+        """Get confidence intervals for the entire shape functions using basis representation.
+        
+        Parameters
+        ----------
+        alpha : float, default=0.05
+            Significance level for confidence intervals
+        intercept : bool, default=False
+            Whether to include intercept in calculations
         
         Returns
         -------
-        pandas.DataFrame
-            DataFrame with feature names and their importance scores.
+        dict
+            Dictionary mapping feature names to tuples of (x_values, lower_bound, upper_bound)
         """
         if self.sfo is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
         
-        importances = []
-        for i, feature_name in enumerate(self.feature_names):
-            _, y_values = self.model.shapeFunctionOptimizerList[i].get_para()
-            y_rescaled = y_values * self.model.scale_info['y_scale']
-            importance = np.max(y_rescaled) - np.min(y_rescaled)
-            importances.append(importance)
+        # Get confidence intervals from GAM_light
+        ci_dict = self.model.get_shape_function_confidence_intervals(alpha, intercept)
         
-        importance_df = pd.DataFrame({
-            'Feature': self.feature_names,
-            'Importance': importances
+        # Map feature indices to feature names
+        return {self.feature_names[i]: ci_values for i, ci_values in ci_dict.items()} 
+
+    @property
+    def viz_data(self):
+        """Get the visualization data for shape functions."""
+        return self._viz_data
+
+    @viz_data.setter
+    def viz_data(self, value):
+        """Set the visualization data for shape functions."""
+        self._viz_data = value
+
+    @property
+    def viz_model_info(self):
+        """Get the model info for visualization."""
+        return self._viz_model_info
+
+    @viz_model_info.setter
+    def viz_model_info(self, value):
+        """Set the model info for visualization."""
+        self._viz_model_info = value
+
+    @property
+    def viz_waterfall(self):
+        """Get the waterfall data for visualization."""
+        return self._viz_waterfall
+
+    @viz_waterfall.setter
+    def viz_waterfall(self, value):
+        """Set the waterfall data for visualization."""
+        self._viz_waterfall = value
+
+    def set_prediction(self, feature, value):
+        """
+        Set the prediction value for a specific feature across all samples in the visualization data.
+        Also updates the corresponding shape function values in the visualization.
+        
+        Parameters
+        ----------
+        feature : str or int
+            Feature name or column index to modify
+        value : float or callable
+            New prediction value to set. If callable, it should take the current value
+            and return the new value.
+        
+        Returns
+        -------
+        self : object
+            Returns self.
+        
+        Examples
+        --------
+        # Set all predictions for feature 'x2' to 1.5
+        gam.set_prediction('x2', 1.5)
+        
+        # Set all predictions for second feature (index 1) to 1.5
+        gam.set_prediction(1, 1.5)
+        
+        # Scale all predictions for feature 'x2' by 2
+        gam.set_prediction('x2', lambda x: 2 * x)
+        """
+        if self._viz_waterfall is None or self._viz_data is None:
+            raise ValueError("No visualization data available. Call show() first.")
+        
+        # Convert feature index to name if needed
+        if isinstance(feature, int):
+            if feature >= len(self.feature_names):
+                raise ValueError(f"Feature index {feature} out of range")
+            feature = self.feature_names[feature]
+        elif isinstance(feature, str):
+            if feature not in self.feature_names:
+                raise ValueError(f"Feature '{feature}' not found")
+        else:
+            raise ValueError("Feature must be either an integer index or string name")
+        
+        # Update waterfall data for all samples
+        for sample in self._viz_waterfall:
+            for feature_data in sample['data']:
+                if feature_data['fea_idx'] == feature:
+                    old_value = feature_data['pdep']
+                    new_value = value(old_value) if callable(value) else float(value)
+                    
+                    # Update the prediction value and confidence bounds
+                    feature_data['pdep'] = new_value
+                    feature_data['confi_u_X'] = new_value
+                    feature_data['confi_l_X'] = new_value
+                    
+                    # Update total prediction
+                    sample['pred_y'] += new_value - old_value
+                    break
+        
+        # Update shape function values in zip_data
+        if feature in self._viz_data:
+            feature_data = self._viz_data[feature]
+            for point in feature_data:
+                old_value = point['y']
+                new_value = value(old_value) if callable(value) else float(value)
+                point['y'] = new_value
+                point['c'] = [new_value, new_value]  # Update confidence bounds
+        
+        return self
+
+    def set_predictions(self, predictions):
+        """
+        Set multiple prediction values for features in the visualization data.
+        
+        Parameters
+        ----------
+        predictions : dict
+            Dictionary mapping feature names/indices to new prediction values or callables
+        
+        Returns
+        -------
+        self : object
+            Returns self.
+        
+        Examples
+        --------
+        # Set fixed values
+        gam.set_predictions({
+            'x2': 1.5,
+            'x3': 2.0
         })
         
-        return importance_df.sort_values('Importance', ascending=False) 
+        # Using indices
+        gam.set_predictions({
+            1: 1.5,
+            2: 2.0
+        })
+        
+        # Using transformations
+        gam.set_predictions({
+            'x2': lambda x: 2 * x,  # double all values
+            'x3': lambda x: x + 1   # add 1 to all values
+        })
+        """
+        for feature, value in predictions.items():
+            self.set_prediction(feature, value)
+        return self 
