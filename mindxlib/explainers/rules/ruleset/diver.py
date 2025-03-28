@@ -605,7 +605,7 @@ class Diver(RuleExplainer):
     def fit(self, X, y, X_columns=None, y_column=None,default_label=None):
         self.X_columns = X_columns
         X = self._ensure_dataframe(X,columns=self.X_columns)
-        y = self._ensure_dataframe(y,columns=y_column if y_column else ['label'])
+        y = self._ensure_dataframe(y,columns=y_column if y_column else [self.label_col])
 
 
         label_counts = y.value_counts()
@@ -618,6 +618,7 @@ class Diver(RuleExplainer):
 
         data_df = pd.concat((X, y), axis=1)
         data_df.columns = [str(col) for col in data_df.columns]
+ 
         label_cnt = data_df[self.label_col].value_counts()
         label_info = [(label_cnt.index[k], label_val) for (k, label_val) in enumerate(label_cnt)]
         sort_label_info = sorted(label_info, key=lambda x: x[1])
@@ -651,7 +652,7 @@ class Diver(RuleExplainer):
         X_test = self._ensure_dataframe(X_test,columns=self.X_columns)
         Xtest_list = [Transaction(feat2item(t)) for t in X_test.values]
         ypredict_diver = predict_all(self.diver_rule, self.default_label, Xtest_list)
-        ypredict_diver = self._ensure_dataframe(ypredict_diver,columns=['label']).iloc[:,0]
+        ypredict_diver = self._ensure_dataframe(ypredict_diver,columns=[self.label_col]).iloc[:,0]
         return ypredict_diver
         # bacc = balanced_accuracy_score(y_test, ypredict_diver)
         # acc = accuracy_score(y_test, ypredict_diver)
@@ -722,10 +723,10 @@ class Diver(RuleExplainer):
         dim_list = [i for i in dim_list if i not in bad_cols]
 
         # order data, first come pos, then neg
-        c_df.loc[c_df[label_col] == label_val, 'label'] = '1'
+        c_df.loc[c_df[label_col] == label_val, self.label_col] = '1'
         label_val = '1'
-        c_df.loc[c_df[label_col] != label_val, 'label'] = '0'
-        c_df = c_df.sort_values(by=['label'], ascending=False).reset_index()
+        c_df.loc[c_df[label_col] != label_val, self.label_col] = '0'
+        c_df = c_df.sort_values(by=[self.label_col], ascending=False).reset_index()
         tot_index_list = list(c_df['index'].values)
         c_df = c_df[[i for i in c_df.columns if i != 'index']]
 

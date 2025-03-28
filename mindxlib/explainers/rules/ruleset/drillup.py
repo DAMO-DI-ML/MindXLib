@@ -1152,7 +1152,7 @@ class DrillUp(RuleExplainer):
     def fit(self, X, y, X_columns=None, y_column=None,default_label=None):
         self.X_columns = X_columns
         X = self._ensure_dataframe(X,columns=self.X_columns)
-        y = self._ensure_dataframe(y,columns=y_column if y_column else ['label'])
+        y = self._ensure_dataframe(y,columns=y_column if y_column else [self.label_col])
 
         
         label_counts = y.value_counts()

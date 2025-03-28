@@ -128,6 +128,31 @@ def test_drillup_from_csv():
     ELSE 0
     The training acc is 0.65
     '''
+def test_diver_with_dataframe_1():
+    ## Examples
+
+
+    # Create sample data
+    # Binary classification example (anomaly detection)
+    X = pd.DataFrame({
+            'age': ['young', 'middle-aged', 'old', 'middle-aged', 'old'],
+            'income': ['high', 'medium', 'low', 'low', 'medium'],
+        })
+    y = pd.Series([0, 1, 1, 0, 1], name='is_anomaly')  # 1 indicates anomaly
+
+    
+    explainer =  DrillUp(
+    label_col='is_anomaly',
+    label_val=1,  # We're interested in rules for anomalies
+    min_dim_val_cnt = 5,
+    sup_ratio = 0.01,
+    out_num = 100,
+    jcd_limit = 0.75,
+    min_pat_len = 1,
+    dim_list=['age', 'income'],  # Focus on these features
+)
+
+    explainer.fit(X, y)
 
 if __name__ == "__main__":
-    test_drillup_with_numpy()
+    test_diver_with_dataframe_1()

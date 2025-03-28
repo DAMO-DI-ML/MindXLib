@@ -7,3 +7,4 @@
 .python-version
 .zshrc
 git-m.sh
+*.ipynb
