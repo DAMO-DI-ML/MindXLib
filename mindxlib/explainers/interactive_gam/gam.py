@@ -528,31 +528,36 @@ class GAM_light:
             self._calculate_residuals()
 
     def _create_design_matrix(self, X_scaled, threshold_list):
-        """Helper function to create design matrix for confidence intervals.
+        """Create design matrix for basis functions representation.
         
         Parameters
         ----------
         X_scaled : array-like
             Scaled input data
         threshold_list : array-like
-            Threshold values for the shape function
+            Threshold values for the ReLU basis functions
             
         Returns
         -------
         array-like
-            Design matrix Z
+            Design matrix Z where each row is [1, x, max(x-t1,0), max(x-t2,0), ...]
         """
-        # Get indices in threshold list for each X value
-        indices = np.searchsorted(threshold_list, X_scaled)
+        n_samples = len(X_scaled)
+        n_basis = len(threshold_list) + 2  # +2 for intercept and linear term
         
-        # Create design matrix
-        Z = np.zeros((X_scaled.shape[0], len(threshold_list)+1))
+        # Initialize design matrix
+        Z = np.zeros((n_samples, n_basis))
         
-        # For each sample, set the appropriate slope term
-        for j, idx in enumerate(indices):
-            if idx > 0:
-                Z[j, idx] = X_scaled[j] - threshold_list[idx-1]
-                
+        # Set intercept term
+        Z[:, 0] = 1
+        
+        # Set linear term
+        Z[:, 1] = X_scaled
+        
+        # Set ReLU basis terms
+        for j, threshold in enumerate(threshold_list):
+            Z[:, j+2] = np.maximum(X_scaled - threshold, 0)
+        
         return Z
 
     def _calculate_residuals(self):
@@ -605,8 +610,9 @@ class GAM_light:
         Args:
             X_test: numpy array of shape (n_samples, n_features) containing test data
             
-        Returns:
-            numpy array of shape (n_samples,) containing predictions
+        Returns
+        -------
+        numpy array of shape (n_samples,) containing predictions
         """
         # Get predictions from each shape function
         predictions = self.predict_shape_functions(X_test,intercept=False)
@@ -723,8 +729,9 @@ class GAM_light:
         Args:
             X_test: numpy array of shape (n_samples, n_features) containing test data
             
-        Returns:
-            numpy array of shape (n_samples, n_features) containing individual shape function predictions
+        Returns
+        -------
+        numpy array of shape (n_samples, n_features) containing individual shape function predictions
         """
         n_samples, n_features = X_test.shape
         predictions = np.zeros((n_samples, n_features))
@@ -789,6 +796,8 @@ class GAM_light:
             
             # Calculate standard errors for predictions using stored vcov matrix
             var_pred = np.sum(Z_new * (Z_new @ sfo.vcov), axis=1)
+            # 确保方差非负
+            var_pred = np.maximum(var_pred, 0)  # 添加这行来处理数值不稳定性
             std_errors = np.sqrt(var_pred)
             
             # Calculate confidence intervals
@@ -800,15 +809,15 @@ class GAM_light:
         
         return confidence_intervals
 
-    def get_shape_function_confidence_intervals(self, alpha=0.05, intercept = False):
-        """Calculate confidence intervals for the entire shape functions.
+    def get_shape_function_confidence_intervals(self, alpha=0.05, intercept=False):
+        """Calculate confidence intervals for the entire shape functions using basis representation.
         
         Parameters
         ----------
         alpha : float, default=0.05
-            Significance level for confidence intervals (e.g., 0.05 for 95% CI)
+            Significance level for confidence intervals
         intercept : bool, default=False
-            Whether to include intercept in the calculations
+            Whether to include intercept in calculations
         
         Returns
         -------
@@ -819,12 +828,12 @@ class GAM_light:
         
         confidence_intervals = {}
         
-        # Calculate degrees of freedom (same for all features)
+        # Calculate degrees of freedom
         n = len(self.Y)  # number of observations
-        p = len(self.shapeFunctionOptimizerList[0].threshold_list) + 1  # number of parameters
+        p = len(self.shapeFunctionOptimizerList[0].threshold_list) + 2  # number of parameters (+2 for intercept and linear term)
         df = n - p
         
-        # Get critical value (same for all features)
+        # Get critical value
         t_value = stats.t.ppf(1 - alpha/2, df)
         
         # Get shape function data
@@ -840,10 +849,9 @@ class GAM_light:
             # Scale x values for internal calculations
             x_scaled = self._scale_data(x_values, idx=i)
             
-            # Create design matrix for these points
+            # Create design matrix for these points using basis functions
             Z = self._create_design_matrix(x_scaled, sfo.threshold_list)
             
-            # Calculate variance-covariance matrix
             try:
                 ZtZ_inv = np.linalg.inv(Z.T @ Z)
                 vcov = ZtZ_inv * self.sigma2
@@ -852,20 +860,18 @@ class GAM_light:
                 ZtZ_inv = np.linalg.pinv(Z.T @ Z)
                 vcov = ZtZ_inv * self.sigma2
             
-            # Calculate standard errors for predictions
+            # Calculate standard errors for predictions using basis representation
             var_pred = np.sum(Z * (Z @ vcov), axis=1)
+            var_pred = np.maximum(var_pred, 0)  # 添加这行来处理数值不稳定性
             std_errors = np.sqrt(var_pred)
+            std_errors *= self.scale_info['y_scale']
             
-            # Scale standard errors if needed
-            if intercept:
-                std_errors *= self.scale_info['y_scale']
             
-            # Calculate confidence intervals
             margin = t_value * std_errors
             lower = y_values - margin
             upper = y_values + margin
             
-            # Store results with original x values
+            
             confidence_intervals[i] = (x_values, lower, upper)
         
         return confidence_intervals
@@ -1158,11 +1164,13 @@ class GAM:
         
         return self
     
-    def show(self, data, mode='static', port=8082, waterfall_height="40vh", intercept = False, **kwargs):
+    def show(self, data, mode='static', port=8082, waterfall_height="40vh", intercept = False, auto_open = True, ci = True, **kwargs):
         '''
         mode: 'static' or 'interactive'
         port: only used in interactive mode
-        waterfall_height: height of the waterfall component in interactive mode (e.g., "40vh", "300px")
+        waterfall_height: only used in interactive mode. Height of the waterfall component in interactive mode (e.g., "40vh", "300px")
+        auto_open: only used in interactive mode. Whether to open the app automatically
+        ci: only used in interactive mode. Whether to show the confidence intervals
         '''
         if self.sfo is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
@@ -1170,7 +1178,7 @@ class GAM:
             return plot_static_gam(self, data, **kwargs)
         elif mode == 'interactive':
             # plot_interactive_gam(self, data, **kwargs)
-            create_app(self, data, waterfall_height=waterfall_height, port=port, intercept=intercept)
+            create_app(self, data, waterfall_height=waterfall_height, port=port, intercept=intercept, auto_open=auto_open, ci = ci)
             # return
         else:
             raise ValueError(f"Invalid mode: {mode}. Choose from 'static' or 'interactive'.")
@@ -1255,13 +1263,15 @@ class GAM:
         # Map predictions to feature names
         return {name: predictions[:, i] for i, name in enumerate(self.feature_names)} 
 
-    def get_shape_function_confidence_intervals(self, alpha=0.05, intercept = False):
-        """Get confidence intervals for the entire shape functions.
+    def get_shape_function_confidence_intervals(self, alpha=0.05, intercept=False):
+        """Get confidence intervals for the entire shape functions using basis representation.
         
         Parameters
         ----------
         alpha : float, default=0.05
-            Significance level for confidence intervals (e.g., 0.05 for 95% CI)
+            Significance level for confidence intervals
+        intercept : bool, default=False
+            Whether to include intercept in calculations
         
         Returns
         -------

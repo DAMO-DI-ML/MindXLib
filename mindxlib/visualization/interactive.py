@@ -44,7 +44,7 @@ import threading
 import webbrowser
 
 
-def load_data(model, data, intercept=False):
+def load_data(model, data, intercept=False, ci = True):
     """
     Convert data to the format required by visualization components.
     
@@ -84,7 +84,8 @@ def load_data(model, data, intercept=False):
             feature_data.append({
                 "x": float(x_values[sort_idx][i]),
                 "y": float(y_values[sort_idx][i]),
-                "c": [float(lower_ci[sort_idx][i]), float(upper_ci[sort_idx][i])]  # Use confidence interval bounds
+                "c": [float(lower_ci[sort_idx][i]), float(upper_ci[sort_idx][i])] \
+                    if ci else [float(y_values[sort_idx][i]),float(y_values[sort_idx][i])]
             })
         
         zip_data[feature_name] = feature_data
@@ -129,7 +130,7 @@ def load_data(model, data, intercept=False):
     
     return zip_data, data_dict, data_waterfall
 
-def create_app(model, data, index=0, intercept = False, waterfall_height="40vh", port=8050, auto_open=True):
+def create_app(model, data, index=0, intercept = False, waterfall_height="40vh", port=8050, auto_open=True, ci = True):
     """
     Create and run a Dash application for interactive visualization of the GAM model.
     
@@ -149,7 +150,7 @@ def create_app(model, data, index=0, intercept = False, waterfall_height="40vh",
         Whether to automatically open the browser
     """
     if model is not None:
-        zip_data, model_info, data_waterfall = load_data(model, data, intercept)
+        zip_data, model_info, data_waterfall = load_data(model, data, intercept, ci)
     else:
         zip_data = {'x1': [{'x': 1, 'y': 1, 'c': [1, 1]}, 
                         {'x': 2, 'y': 2, 'c': [2, 2]}],
@@ -196,7 +197,7 @@ def create_app(model, data, index=0, intercept = False, waterfall_height="40vh",
                         id="shape-ensemble-component",
                         data=zip_data,
                         feature_info=model_info["feature_info"],
-                        choosedId=0,
+                        choosedId=index,
                         waterfallDataAll=data_waterfall,
                         hoveredFeature=None,
                     ),

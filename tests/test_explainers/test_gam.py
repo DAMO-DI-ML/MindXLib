@@ -42,7 +42,7 @@ def test_pandas_basic(X,y):
     y_train, y_test = y[:train_size], y[train_size:]
     
     # Create and fit GAM model
-    gam = GAM(max_iter=200, lambda_1=0.01, verbose=True)
+    gam = GAM(max_iter=200, lambda_1=0.01, verbose=True, bin_num=64)
     gam.fit(X_train, y_train)
     
     # gam.show(X_test,mode='interactive')
