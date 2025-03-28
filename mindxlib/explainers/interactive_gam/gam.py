@@ -491,7 +491,7 @@ class GAM_light:
     
         
 
-    def fit(self, X, Y, sample_weights=None,category_features=None,mode='train',max_iter=None):
+    def fit(self, X, Y, sample_weights=None, category_features=None, mode='train', max_iter=None):
         if mode == 'train':
             self._init_model(X, Y, sample_weights)
             max_iter = self.max_iter
@@ -932,6 +932,11 @@ class GAM:
         self.feature_prefix = feature_prefix
         self.feature_names = None
         self.sfo = None  # Will store shape function optimizers after fitting
+        
+        # Add visualization data storage
+        self._viz_data = None
+        self._viz_model_info = None
+        self._viz_waterfall = None
     
     def fit(self, X, y, sample_weights=None, category_features=None):
         """
@@ -1164,24 +1169,129 @@ class GAM:
         
         return self
     
-    def show(self, data, mode='static', port=8082, waterfall_height="40vh", intercept = False, auto_open = True, ci = True, **kwargs):
+    def _prepare_viz_data(self, data, intercept=False, ci=True, alpha=0.05):
+        """
+        Prepare data for visualization components.
+        
+        Parameters
+        ----------
+        data : pandas.DataFrame or numpy.ndarray
+            Data to visualize.
+        intercept : bool, default=False
+            Whether to include intercept in calculations.
+        ci : bool, default=True
+            Whether to include confidence intervals.
+        alpha : float, default=0.05
+            Significance level for confidence intervals.
+            
+        Returns
+        -------
+        tuple
+            (zip_data, data_dict, data_waterfall) formatted for visualization
+        """
+        if isinstance(data, pd.DataFrame):
+            data = data[self.feature_names].to_numpy()
+        
+        # Get shape functions and confidence intervals
+        shape_functions = self.get_shape_functions(intercept=intercept)
+        shape_confidence_intervals = self.get_shape_function_confidence_intervals(alpha=alpha, intercept=intercept)
+        
+        # Initialize data structures
+        zip_data = {}
+        
+        # For each feature, create the required data format for zip_data
+        for feature_name in self.feature_names:
+            x_values, y_values = shape_functions[feature_name]
+            sort_idx = np.argsort(x_values)
+            x_ci, lower_ci, upper_ci = shape_confidence_intervals[feature_name]
+            
+            # Create the data structure for ShapeEnsemble
+            feature_data = []
+            for i in range(len(x_values)):
+                feature_data.append({
+                    "x": float(x_values[sort_idx][i]),
+                    "y": float(y_values[sort_idx][i]),
+                    "c": [float(lower_ci[sort_idx][i]), float(upper_ci[sort_idx][i])] \
+                        if ci else [float(y_values[sort_idx][i]), float(y_values[sort_idx][i])]
+                })
+            
+            zip_data[feature_name] = feature_data
+        
+        # Create data_dict with the required structure
+        data_dict = {
+            "intercept": float(self.model.scale_info['y_offset']) if intercept else 0,
+            "r2": 0.95,
+            "feature_info": {}
+        }
+        
+        # Add feature contributions to data_dict
+        for feature_name in self.feature_names:
+            data_dict['feature_info'][feature_name] = {
+                "name": feature_name,
+                "display": feature_name,
+                "type": "numeric"
+            }
+        
+        # Create data_waterfall for each row in the provided data
+        data_waterfall = []
+        predictions = self.predict(data)
+        shape_predictions = self.get_shape_predictions(data, intercept=intercept)
+        
+        for idx in range(len(data)):
+            instance = {
+                "id": idx,
+                "y": 0,
+                "pred_y": float(predictions[idx]),
+                "data": []
+            }
+            for feature_name in self.feature_names:
+                instance["data"].append({
+                    "fea_idx": feature_name,
+                    "fea_val": float(data[idx, self.feature_names.index(feature_name)]),
+                    "pdep": float(shape_predictions[feature_name][idx]),
+                    "confi_u_X": float(shape_predictions[feature_name][idx]),
+                    "confi_l_X": float(shape_predictions[feature_name][idx])
+                })
+            data_waterfall.append(instance)
+        self._viz_data = zip_data
+        self._viz_model_info = data_dict
+        self._viz_waterfall = data_waterfall
+        return zip_data, data_dict, data_waterfall
+
+    def show(self, data, mode='static', port=8082, waterfall_height="40vh", intercept=False, auto_open=True, ci=True, alpha=0.05, **kwargs):
         '''
         mode: 'static' or 'interactive'
         port: only used in interactive mode
         waterfall_height: only used in interactive mode. Height of the waterfall component in interactive mode (e.g., "40vh", "300px")
         auto_open: only used in interactive mode. Whether to open the app automatically
         ci: only used in interactive mode. Whether to show the confidence intervals
+        alpha: only used in interactive mode. default=0.05. Significance level for confidence intervals
         '''
         if self.sfo is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
+            
         if mode == 'static':
             return plot_static_gam(self, data, **kwargs)
         elif mode == 'interactive':
-            # plot_interactive_gam(self, data, **kwargs)
-            create_app(self, data, waterfall_height=waterfall_height, port=port, intercept=intercept, auto_open=auto_open, ci = ci)
-            # return
+            # Generate visualization data if not already stored
+            if (self._viz_data is None or 
+                self._viz_model_info is None or 
+                self._viz_waterfall is None):
+                self._viz_data, self._viz_model_info, self._viz_waterfall = self._prepare_viz_data(
+                    data, intercept=intercept, ci=ci, alpha=alpha
+                )
+            
+            create_app(
+                self, data, 
+                waterfall_height=waterfall_height, 
+                port=port, 
+                intercept=intercept, 
+                auto_open=auto_open, 
+                ci=ci
+            )
         else:
             raise ValueError(f"Invalid mode: {mode}. Choose from 'static' or 'interactive'.")
+
     def get_confidence_intervals(self, X, alpha=0.05):
         """Calculate confidence intervals for shape function predictions.
         
@@ -1286,3 +1396,141 @@ class GAM:
         
         # Map feature indices to feature names
         return {self.feature_names[i]: ci_values for i, ci_values in ci_dict.items()} 
+
+    @property
+    def viz_data(self):
+        """Get the visualization data for shape functions."""
+        return self._viz_data
+
+    @viz_data.setter
+    def viz_data(self, value):
+        """Set the visualization data for shape functions."""
+        self._viz_data = value
+
+    @property
+    def viz_model_info(self):
+        """Get the model info for visualization."""
+        return self._viz_model_info
+
+    @viz_model_info.setter
+    def viz_model_info(self, value):
+        """Set the model info for visualization."""
+        self._viz_model_info = value
+
+    @property
+    def viz_waterfall(self):
+        """Get the waterfall data for visualization."""
+        return self._viz_waterfall
+
+    @viz_waterfall.setter
+    def viz_waterfall(self, value):
+        """Set the waterfall data for visualization."""
+        self._viz_waterfall = value
+
+    def set_prediction(self, feature, value):
+        """
+        Set the prediction value for a specific feature across all samples in the visualization data.
+        Also updates the corresponding shape function values in the visualization.
+        
+        Parameters
+        ----------
+        feature : str or int
+            Feature name or column index to modify
+        value : float or callable
+            New prediction value to set. If callable, it should take the current value
+            and return the new value.
+        
+        Returns
+        -------
+        self : object
+            Returns self.
+        
+        Examples
+        --------
+        # Set all predictions for feature 'x2' to 1.5
+        gam.set_prediction('x2', 1.5)
+        
+        # Set all predictions for second feature (index 1) to 1.5
+        gam.set_prediction(1, 1.5)
+        
+        # Scale all predictions for feature 'x2' by 2
+        gam.set_prediction('x2', lambda x: 2 * x)
+        """
+        if self._viz_waterfall is None or self._viz_data is None:
+            raise ValueError("No visualization data available. Call show() first.")
+        
+        # Convert feature index to name if needed
+        if isinstance(feature, int):
+            if feature >= len(self.feature_names):
+                raise ValueError(f"Feature index {feature} out of range")
+            feature = self.feature_names[feature]
+        elif isinstance(feature, str):
+            if feature not in self.feature_names:
+                raise ValueError(f"Feature '{feature}' not found")
+        else:
+            raise ValueError("Feature must be either an integer index or string name")
+        
+        # Update waterfall data for all samples
+        for sample in self._viz_waterfall:
+            for feature_data in sample['data']:
+                if feature_data['fea_idx'] == feature:
+                    old_value = feature_data['pdep']
+                    new_value = value(old_value) if callable(value) else float(value)
+                    
+                    # Update the prediction value and confidence bounds
+                    feature_data['pdep'] = new_value
+                    feature_data['confi_u_X'] = new_value
+                    feature_data['confi_l_X'] = new_value
+                    
+                    # Update total prediction
+                    sample['pred_y'] += new_value - old_value
+                    break
+        
+        # Update shape function values in zip_data
+        if feature in self._viz_data:
+            feature_data = self._viz_data[feature]
+            for point in feature_data:
+                old_value = point['y']
+                new_value = value(old_value) if callable(value) else float(value)
+                point['y'] = new_value
+                point['c'] = [new_value, new_value]  # Update confidence bounds
+        
+        return self
+
+    def set_predictions(self, predictions):
+        """
+        Set multiple prediction values for features in the visualization data.
+        
+        Parameters
+        ----------
+        predictions : dict
+            Dictionary mapping feature names/indices to new prediction values or callables
+        
+        Returns
+        -------
+        self : object
+            Returns self.
+        
+        Examples
+        --------
+        # Set fixed values
+        gam.set_predictions({
+            'x2': 1.5,
+            'x3': 2.0
+        })
+        
+        # Using indices
+        gam.set_predictions({
+            1: 1.5,
+            2: 2.0
+        })
+        
+        # Using transformations
+        gam.set_predictions({
+            'x2': lambda x: 2 * x,  # double all values
+            'x3': lambda x: x + 1   # add 1 to all values
+        })
+        """
+        for feature, value in predictions.items():
+            self.set_prediction(feature, value)
+        return self 

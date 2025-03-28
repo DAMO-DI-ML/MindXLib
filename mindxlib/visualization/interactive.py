@@ -130,31 +130,27 @@ def load_data(model, data, intercept=False, ci = True):
     
     return zip_data, data_dict, data_waterfall
 
-def create_app(model, data, index=0, intercept = False, waterfall_height="40vh", port=8050, auto_open=True, ci = True):
+def create_app(model, 
+               data, 
+               index=0, 
+               intercept=False, 
+               waterfall_height="40vh", 
+               port=8050, 
+               auto_open=True, 
+               ci=True):
     """
     Create and run a Dash application for interactive visualization of the GAM model.
-    
-    Parameters
-    ----------
-    model : GAM
-        The fitted GAM model
-    data : pandas.DataFrame or numpy.ndarray
-        Data to visualize
-    index : int, default=0
-        Initial index to display
-    waterfall_height : str, default="40vh"
-        Height of the waterfall plot
-    port : int, default=8050
-        Port to run the application on
-    auto_open : bool, default=True
-        Whether to automatically open the browser
     """
     if model is not None:
-        zip_data, model_info, data_waterfall = load_data(model, data, intercept, ci)
-    else:
+        # Use the prepared visualization data
+        zip_data = model.viz_data
+        model_info = model.viz_model_info
+        data_waterfall = model.viz_waterfall
+    else: # TODO: test only. remove this
+        # Demo data for testing
         zip_data = {'x1': [{'x': 1, 'y': 1, 'c': [1, 1]}, 
                         {'x': 2, 'y': 2, 'c': [2, 2]}],
-                    'x2': [{'x': 1, 'y': 2, 'c': [2, 2]}, 
+                   'x2': [{'x': 1, 'y': 2, 'c': [2, 2]}, 
                         {'x': 2, 'y': 4, 'c': [4, 4]}]}
         data_waterfall = [{'id': 0, 'y': 0, 'pred_y': 3, 'data': [{'fea_idx': 'x1', 'fea_val': 1, 'pdep': 1, 'confi_u_X': 1, 'confi_l_X': 1}, 
                                                                     {'fea_idx': 'x2', 'fea_val': 1, 'pdep': 2, 'confi_u_X': 2, 'confi_l_X': 2}]},
@@ -163,10 +159,23 @@ def create_app(model, data, index=0, intercept = False, waterfall_height="40vh",
         model_info = {'intercept': 0, 'r2': 0.95, 'feature_info': {'x1': {'name': 'x1', 'display': 'x1', 'type': 'numeric'}, 
                                                                     'x2': {'name': 'x2', 'display': 'x2', 'type': 'numeric'}}}
         
-    # Get the path to the assets folder relative to this file
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Handle both script and interactive environments for assets path
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        # If running in interactive environment, use current working directory
+        # and navigate to the assets folder relative to the project structure
+        current_dir = os.path.join(os.getcwd(), 'mindxlib', 'visualization')
+    
     assets_folder = os.path.join(current_dir, "assets")
-    print("Assets folder path:", assets_folder) 
+    print("Assets folder path:", assets_folder)
+    
+    # Verify assets folder exists
+    if not os.path.exists(assets_folder):
+        print(f"Warning: Assets folder not found at {assets_folder}")
+        # Create assets folder if it doesn't exist
+        os.makedirs(assets_folder, exist_ok=True)
+    
     app = Dash(
         __name__,
         external_stylesheets=[dbc.themes.BOOTSTRAP],
