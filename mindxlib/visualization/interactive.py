@@ -34,8 +34,9 @@ except ImportError:
             raise ImportError(f"dash_vis_components directory not found at {vis_components_dir}")
             
     except Exception as e:
-        print(f"Failed to import dash_vis_components: {e}")
+        print("Failed to import dash_vis_components: {}".format(e))
         print("Please install dash_vis_components manually or ensure it's in the correct location.")
+        print("You can install it using pip: pip install dash-vis-components")
         sys.exit(1)
 
 import numpy as np
