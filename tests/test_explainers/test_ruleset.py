@@ -136,3 +136,4 @@ def test_rulelist_multiclass_with_pandas():
     print(f'Training accuracy with default label=1: {train_acc_default:.2f}')
 
 test_rulelset_with_numpy()
+test_ruleset_from_csv()
