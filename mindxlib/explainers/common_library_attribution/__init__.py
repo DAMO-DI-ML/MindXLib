@@ -4,7 +4,7 @@ Common attribution methods from popular interpretability libraries
 
 from .shap import (
 
-    ShapExplainer, PermutationExplainer
+    ShapExplainer
 
 )
 from .lime import (

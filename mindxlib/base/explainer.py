@@ -132,7 +132,7 @@ class RuleExplainer(ExplainerBase):
         else:
             raise ValueError("Must call fit() before show()")
 
-class FeatureImportanceExplainer(ExplainerBase):
+class FeatureImportanceExplainer(ExplainerBase): #TODO: simplify abstract methods
     """Base class for feature importance/attribution explainers.
     
     This class provides common functionality for attribution methods that explain

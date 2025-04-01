@@ -54,27 +54,16 @@ class RuleExplanation(Explanation):
 class FeatureImportanceExplanation(Explanation):
     """Class for feature importance explanations."""
     
-    def __init__(self, data, feature_importance: Dict[str, float]):
-        """Initialize feature importance explanation.
-        
-        Args:
-            feature_importance (Dict[str, float]): Dictionary mapping feature names to importance scores
-        """
+    def __init__(self, data, feature_importance):
         super().__init__(data)
         
         self.data = data
 
-        if not isinstance(feature_importance, dict):
-            feature_importance = {"feature_importance": feature_importance}
+        # if not isinstance(feature_importance, dict):
+        #     feature_importance = {"feature_importance": feature_importance}
         self.feature_importance = feature_importance
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert feature importance explanation to dictionary format.
-        
-        Returns:
-            Dict[str, Any]: Dictionary containing the feature importance scores
-        """
-        return {"feature_importance": self.feature_importance}
+
     
     def validate(self):
         pass

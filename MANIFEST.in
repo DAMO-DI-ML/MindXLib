@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+recursive-include mindxlib/explainers/rules/ruleset/bin *
+recursive-include mindxlib *.py 

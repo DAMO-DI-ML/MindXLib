@@ -1,10 +1,40 @@
-#MindXLib
+# MindXLib
 
-## Install
-执行 > python setup --install
-就可以将 mindxlib 安装到Python的环境中，在任何目录下都能成功 'import mindxlib'.
-## Introduction
 MindXLib是达摩院决策智能实验室数据决策团队在XAI(Explainable AI，可解释机器学习)领域深耕，展示算法成果的一个open toolkit。
+
+## Installation
+
+You can install MindXLib using pip:
+
+```bash
+pip install mindxlib
+```
+
+Or install from source:
+
+```bash
+git clone https://github.com/alibaba/mindxlib
+cd mindxlib
+pip install -e .
+```
+
+## Quick Start
+
+```python
+from mindxlib import RuleSet
+from mindxlib import ShapExplainer
+
+# Use RuleSet
+ruleset = RuleSet()
+ruleset.fit(X_train, y_train)
+predictions = ruleset.predict(X_test)
+
+# Use SHAP
+explainer = ShapExplainer(model)
+shap_values = explainer.explain(X_test)
+```
+
+## Introduction
 该算法包目前主要涵盖白盒模型相关的算法,用以解决需要可解释性的分类场景，包括rule set、rule list。
 
 以Titanic分类问题为例，下面展示不同白盒模型的结果示例。

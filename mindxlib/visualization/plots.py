@@ -1,5 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from shap.plots import waterfall, bar
+
+def plot_waterfall(explanation, **kwargs):
+    """
+    Plot waterfall chart for SHAP explanations
+    
+    Args:
+        explanations: Single shapExplanation instance or list of shapExplanation instances
+        index (int): Index to use when explanations is a list
+        **kwargs: Additional arguments passed to shap.waterfall_plot
+    """
+    waterfall(explanation.shap_explanation[:,:,0][0], **kwargs)
+
 
 def plot_static_gam(model, feature_indices=None, figsize=(12, 10), display=True, 
              title=None, xlabel=None, ylabel="Attribution", show_density=True, 
