@@ -1122,7 +1122,7 @@ class cl_fptree:
             self.add_a_pattern(p)
 
 class DrillUp(RuleExplainer):
-    def __init__(self,label_col, label_val, dim_list=None,
+    def __init__(self,label_col="Label", label_val=None, dim_list=None,
                 min_dim_val_cnt=5, sup_ratio=0.01, out_num=100, jcd_limit=0.75,
                 min_pat_len=1, score_gap=1.0, score_type='risk'):
         """
@@ -1149,7 +1149,7 @@ class DrillUp(RuleExplainer):
         self.score_gap = score_gap
         self.score_type = score_type
 
-    def fit(self, X, y, X_columns=None, y_column=None,default_label=None):
+    def fit(self, X, y, X_columns=None, y_column='Label',default_label=None):
         self.X_columns = X_columns
         X = self._ensure_dataframe(X,columns=self.X_columns)
         y = self._ensure_dataframe(y,columns=y_column if y_column else [self.label_col])

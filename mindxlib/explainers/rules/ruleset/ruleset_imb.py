@@ -37,6 +37,7 @@ def get_binary_path():
 
 binpath = get_binary_path()
 
+
 class RulesetExplanation(RuleExplanation):
     def show(self):
         """Override show method to print rules in custom format."""
