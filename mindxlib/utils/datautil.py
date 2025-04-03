@@ -92,3 +92,30 @@ def process_input_data(X: Union[pd.DataFrame, np.ndarray],
         raise ValueError('y must be DataFrame, Series or ndarray')
 
     return X, y_processed, feature_columns, label_column
+
+def validate_shap_values(shap_values, class_index):
+    """Validate SHAP values shape and class index, returning the appropriate values.
+    
+    Args:
+        shap_values: The SHAP values array
+        class_index: Index of the class to explain
+        
+    Returns:
+        tuple: (values, is_multiclass)
+            - values: The appropriate SHAP values to use
+            - is_multiclass: Boolean indicating if values have multiple classes
+            
+    Raises:
+        ValueError: If class_index is out of range
+    """
+    if len(shap_values.shape) == 3:
+        if class_index >= shap_values.shape[2]:
+            raise ValueError(f"class_index is out of range, got {class_index}, expected range is 0 to {shap_values.shape[2]-1}")
+        try:
+            return shap_values[:,:,class_index], True
+        except:
+            print(f"Error: shap_values has 3 dimensions, but class_index is out of range, got {class_index}, expected range is 0 to {shap_values.shape[2]-1}")
+            return shap_values, True
+    else:
+        print(f"class_index is {class_index} but not used, because the prediction has only 2 dimensions")
+        return shap_values, False

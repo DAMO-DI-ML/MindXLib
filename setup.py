@@ -1,30 +1,39 @@
-from setuptools import setup, find_packages
+import platform
+from setuptools import setup
+
+# Read requirements from requirements.txt
+def get_requirements():
+    requirements = []
+    with open("requirements.txt", "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                requirements.append(line)
+    
+    # Add platform-specific requirements
+    if platform.system() == "Windows":
+        requirements.append("pywin32>=228")  # For Windows-specific functionality
+    
+    return requirements
+
+# Get platform-specific binary paths
+def get_binary_paths():
+    binary_paths = []
+    if platform.system() == "Windows":
+        binary_paths.append('explainers/rules/ruleset/bin/*.exe')
+    else:  # Linux and other Unix-like systems
+        binary_paths.append('explainers/rules/ruleset/bin/*')
+    return binary_paths
 
 setup(
-    name="mindxlib",
-    version="0.1.0",
-    author='Alibaba Damo Academy',
-    author_email="TODO@alibaba-inc.com",
-    description="Explainable AI methods from Alibaba Damo Academy",
-    long_description=open("README.md").read(),
-    long_description_content_type="text/markdown",
-    url="https://github.com/DAMO-DI-ML/mindxlib",
-    packages=find_packages(),
+    use_scm_version={
+        "write_to": "mindxlib/_version.py",
+        "write_to_template": '__version__ = "{version}"',
+    },
+    install_requires=get_requirements(),
     include_package_data=True,
-    install_requires=[
-        "numpy>=1.20.0",
-        "pandas>=1.3.0", 
-        "scikit-learn>=1.0.0",
-        "shap>=0.41.0",
-        "lime>=0.2.0",
-        "pyroaring",
-        "mip",
-        "numba"
-    ],
-    python_requires=">=3.8",
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: Apache Software License",
-        "Operating System :: OS Independent",
-    ],
+    package_data={
+        'mindxlib': get_binary_paths()
+    },
+    zip_safe=False,
 )

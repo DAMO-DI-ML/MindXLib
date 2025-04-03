@@ -1,18 +1,30 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from shap.plots import waterfall, bar
+from shap.plots import waterfall, bar, scatter
+from mindxlib.utils.datautil import validate_shap_values
 
-def plot_waterfall(explanation, **kwargs):
-    """
-    Plot waterfall chart for SHAP explanations
+def plot_bar(explanation, index = 0, class_index = 0, **kwargs):
+    values, _ = validate_shap_values(explanation.shap_explanation, class_index)
+    bar(values[index], **kwargs)
+
+def plot_waterfall(explanation, index = 0, class_index = 0, **kwargs):
+    values, _ = validate_shap_values(explanation.shap_explanation, class_index)
+    waterfall(values[index], **kwargs)
+
+def plot_scatter(explanation, class_index=0, feature=None, **kwargs):
+    values, _ = validate_shap_values(explanation.shap_explanation, class_index)
     
-    Args:
-        explanations: Single shapExplanation instance or list of shapExplanation instances
-        index (int): Index to use when explanations is a list
-        **kwargs: Additional arguments passed to shap.waterfall_plot
-    """
-    waterfall(explanation.shap_explanation[:,:,0][0], **kwargs)
-
+    if feature is not None:
+        # Plot single feature
+        if isinstance(feature, str):
+            # Convert feature name to index if needed
+            feature_idx = explanation.shap_explanation.feature_names.index(feature)
+            scatter(values[:, feature_idx], values[:, feature_idx], **kwargs)
+        else:
+            scatter(values[:, feature], explanation.data[:, feature], **kwargs)
+    else:
+        # Plot all features
+        scatter(values, **kwargs)
 
 def plot_static_gam(model, feature_indices=None, figsize=(12, 10), display=True, 
              title=None, xlabel=None, ylabel="Attribution", show_density=True, 

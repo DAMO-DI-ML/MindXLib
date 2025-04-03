@@ -1,13 +1,12 @@
+import xgboost
 
-# import dash_bootstrap_components as dbc
-# from dash import Dash, Input, Output, callback, html
-# import mindxlib.visualization.dash_vis_components
-# from mindxlib.visualization.dash_vis_components import CalHeatmap, LineChart, ShapeEnsemble, Waterfall
-from mindxlib.visualization.interactive import create_app
+import shap
 
+# train XGBoost model
+X, y = shap.datasets.adult()
+model = xgboost.XGBClassifier().fit(X, y)
 
-# 在外部显式启动服务
-if __name__ == "__main__":
-    # import webbrowser
-    # webbrowser.open("http://localhost:8050")
-    create_app(None, None)
+# compute SHAP values
+explainer = shap.Explainer(model, X)
+shap_values = explainer(X)
+shap.plots.waterfall(shap_values[0])
