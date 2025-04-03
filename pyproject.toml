@@ -15,7 +15,7 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.7"
-license = {text = "MIT"}
+license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.7",
@@ -24,7 +24,6 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
@@ -60,6 +59,9 @@ dev = [
 [project.urls]
 "Bug Reports" = "https://github.com/DAMO-DI-ML/mindxlib/issues"
 "Source" = "https://github.com/DAMO-DI-ML/mindxlib"
+
+[tool.setuptools]
+packages = ["mindxlib"]
 
 [tool.black]
 line-length = 88
