@@ -7,7 +7,8 @@ def get_requirements():
     with open("requirements.txt", "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if line and not line.startswith("#"):
+            # Skip empty lines, comments, and setuptools requirement
+            if line and not line.startswith("#") and not line.startswith("setuptools"):
                 requirements.append(line)
     
     # Add platform-specific requirements
