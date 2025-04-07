@@ -2,9 +2,10 @@
 .idea
 *.pyc
 *.pyo
-*.json
 .env
 .python-version
 .zshrc
 git-m.sh
 *.ipynb
+*_data.json
+

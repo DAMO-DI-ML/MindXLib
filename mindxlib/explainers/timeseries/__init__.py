@@ -2,8 +2,8 @@
 Time series model interpretation methods
 """
 
-from .fdtempexplainer import PatchContributionExplainer
+from .fdtempexplainer import FDTempExplainer
 
 __all__ = [
-    'PatchContributionExplainer'
+    'FDTempExplainer'
 ]

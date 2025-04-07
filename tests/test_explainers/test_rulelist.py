@@ -1,6 +1,7 @@
 import numpy as np
 from mindxlib import SSRL
 import pandas as pd
+from mindxlib.explainers.rules.rulelist import SSRL
 from mindxlib.utils.features import FeatureBinarizer
 
 def test_rulelist_with_numpy():
@@ -44,7 +45,6 @@ def test_rulelist_with_numpy():
 def test_rulelist_invalid_input():
     explainer = SSRL(0.5)
     
-
     X_invalid = np.array([[1, 2], [3, 4]])  # 2D array with wrong shape
     y_invalid = np.array([1, 2, 3])  # Length mismatch with X_invalid
     

@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 import warnings
-from mindxlib.base.explanation import RuleExplanation, FeatureImportanceExplanation
+from mindxlib.base.explanation import FeatureImportanceExplanation, GAMShapeFunctionExplanation, RuleExplanation
+
 """
 Base classes for explainable AI methods
 """
@@ -135,7 +136,7 @@ class FeatureImportanceExplainer(ExplainerBase):
     """Base class for feature importance/attribution explainers.
     
     This class provides common functionality for attribution methods that explain
-    feature importance, including both traditional methods (SHAP, LIME) and 
+    feature importance, including both traditional methods (IG, SHAP, LIME) and 
     time series methods (FDTemp).
     """
     
@@ -150,7 +151,7 @@ class FeatureImportanceExplainer(ExplainerBase):
         super().__init__(model, **kwargs)
         self.data = data
         
-    def explain(self, data, baseline=None, **kwargs):
+    def explain(self, data, baseline=None, target_labels=None, **kwargs):
         """Generate feature importance explanations
         
         Args:
@@ -159,6 +160,8 @@ class FeatureImportanceExplainer(ExplainerBase):
                 For time series: shape (n_samples, n_timesteps, n_features)
             baseline: Optional reference values for computing feature importance
                 Default is None, in which case method-specific defaults are used
+                For tabular data: shape (n_features) or (n_samples, n_features)
+                For time series: shape (n_timesteps, n_features) or (n_samples, n_timesteps, n_features)
             **kwargs: Additional explanation parameters
             
         Returns:
@@ -166,14 +169,45 @@ class FeatureImportanceExplainer(ExplainerBase):
         """
         # Validate inputs
         data = self._validate_data(data)
+
         if baseline is not None:
-            baseline = self._validate_baseline(baseline, data)
-            
+            self._validate_baseline(baseline, data, **kwargs)
+        
+        baseline = self._initial_baseline(data, baseline, **kwargs)
+
+        
         # Generate attributions (to be implemented by child classes)
         attributions = self._compute_attributions(data, baseline, **kwargs)
         
         return self._format_explanation(data, attributions)
     
+    def _validate_baseline(self, baseline, data, **kwargs):
+
+        """Validate baseline reference values
+        
+        Args:
+            baseline: Baseline values
+            data: Input data for shape reference
+            
+        Returns:
+            Validated baseline array
+        """
+        baseline = np.array(baseline)
+        if baseline.shape[-1] != data.shape[-1]:
+            raise ValueError("Baseline must have same number of features as data")
+        return baseline
+    
+
+    def _initial_baseline(self, data, baseline, **kwargs):
+        """Initial baseline by method
+        Args:
+            data Input data for shape reference
+
+        Returns:
+            Initialized baseline array
+        """
+        return None
+
     def _validate_data(self, data):
         """Validate and format input data
         
@@ -190,21 +224,6 @@ class FeatureImportanceExplainer(ExplainerBase):
                 raise ValueError(f"Data must be array-like, got {type(data)}")
                 
         return data
-    
-    def _validate_baseline(self, baseline, data):
-        """Validate baseline reference values
-        
-        Args:
-            baseline: Baseline values
-            data: Input data for shape reference
-            
-        Returns:
-            Validated baseline array
-        """
-        baseline = np.array(baseline)
-        if baseline.shape[-1] != data.shape[-1]:
-            raise ValueError("Baseline must have same number of features as data")
-        return baseline
     
     @abstractmethod
     def _compute_attributions(self, data, baseline=None, **kwargs):
@@ -234,7 +253,7 @@ class FeatureImportanceExplainer(ExplainerBase):
 
         return FeatureImportanceExplanation(
             data=data,
-            attributions=attributions
+            feature_importance=attributions
         )
 
 # class BlackBoxBase(ExplainerBase):
