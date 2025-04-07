@@ -22,7 +22,7 @@ try:
         
         # Import from local path
         from mindxlib.visualization.dash_vis_components import CalHeatmap, LineChart, ShapeEnsemble, Waterfall
-        print(f"Successfully imported dash_vis_components from: {vis_components_dir}")
+        # print(f"Successfully imported dash_vis_components from: {vis_components_dir}")
     else:
         raise ImportError(f"dash_vis_components directory not found at {vis_components_dir}")
         
