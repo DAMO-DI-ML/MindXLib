@@ -7,43 +7,29 @@ import subprocess
 import os
 import threading
 import webbrowser
-
-# First, check if dash_vis_components is installed in the environment
-try:
-    # Try to import from the installed package in the environment
-    import dash_vis_components
-    from dash_vis_components import CalHeatmap, LineChart, ShapeEnsemble, Waterfall
-    print("dash_vis_components found in environment.")
-except ImportError:
-    # If not found in environment, try to import directly from local path
-    print("dash_vis_components not found in environment. Trying local import...")
-    try:
-        # Add the local package path to sys.path
-        package_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        vis_components_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dash_vis_components')
-        
-        if os.path.exists(vis_components_dir):
-            # Add the component directory to the Python path
-            if vis_components_dir not in sys.path:
-                sys.path.insert(0, os.path.dirname(vis_components_dir))
-            
-            # Import from local path
-            from mindxlib.visualization.dash_vis_components import CalHeatmap, LineChart, ShapeEnsemble, Waterfall
-            print(f"Successfully imported dash_vis_components from local path: {vis_components_dir}")
-        else:
-            raise ImportError(f"dash_vis_components directory not found at {vis_components_dir}")
-            
-    except Exception as e:
-        print("Failed to import dash_vis_components: {}".format(e))
-        print("Please install dash_vis_components manually or ensure it's in the correct location.")
-        print("You can install it using pip: pip install dash-vis-components")
-        sys.exit(1)
-
 import numpy as np
 import pandas as pd
-import threading
-import webbrowser
 
+# Import dash_vis_components from local path
+try:
+    # Add the component directory to the Python path
+    vis_components_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dash_vis_components')
+    
+    if os.path.exists(vis_components_dir):
+        # Add the component directory to the Python path if not already there
+        if vis_components_dir not in sys.path:
+            sys.path.insert(0, os.path.dirname(vis_components_dir))
+        
+        # Import from local path
+        from mindxlib.visualization.dash_vis_components import CalHeatmap, LineChart, ShapeEnsemble, Waterfall
+        print(f"Successfully imported dash_vis_components from: {vis_components_dir}")
+    else:
+        raise ImportError(f"dash_vis_components directory not found at {vis_components_dir}")
+        
+except Exception as e:
+    print("Failed to import dash_vis_components: {}".format(e))
+    print("Please ensure dash_vis_components is in the correct location.")
+    sys.exit(1)
 
 def load_data(model, data, intercept=False, ci = True):
     """

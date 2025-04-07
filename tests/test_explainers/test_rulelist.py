@@ -1,8 +1,8 @@
 import numpy as np
 from mindxlib import SSRL
 import pandas as pd
-from mindxlib.explainers.rules.rulelist import SSRL
-from mindxlib.utils.features import FeatureBinarizer
+# from mindxlib.explainers.rules.rulelist import SSRL
+# from mindxlib.utils.features import FeatureBinarizer
 
 def test_rulelist_with_numpy():
     # Create numpy array with meaningful feature names

@@ -3,7 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mindxlib.explainers.interactive_gam.gam import GAM
 from sklearn.metrics import mean_squared_error, r2_score
-from mindxlib.visualization.interactive import create_app
 
 def generate_synthetic_data(n_samples=1000, noise_level=0.1, random_state=42):
     """
