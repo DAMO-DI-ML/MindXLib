@@ -87,16 +87,15 @@ class ShapExplainer(FeatureImportanceExplainer):
             print(f"mode:{mode_dict[mode]}")
         print(f"mode:{mode}")
         
-        # Choose prediction function based on link parameter
-        if self.link == "logit":
+        if self.method == 'tree':
+            predict_function = self.model
+        elif self.link == "logit":
             if hasattr(self.model, 'predict_proba'):
                 predict_function = lambda x: self.model.predict_proba(x)
             else:
                 raise AttributeError("Model must have predict_proba method when link='logit'")
-        elif self.method!='tree':
-            predict_function = lambda x: self.model.predict(x)
         else:
-            predict_function = self.model
+            predict_function = lambda x: self.model.predict(x)
 
         # Get appropriate SHAP link function
         link_function = shap.links.logit if self.link == "logit" else shap.links.identity
@@ -115,6 +114,7 @@ class ShapExplainer(FeatureImportanceExplainer):
             return explainer_factory(
                 predict_function,
                 baseline,
+                link=link_function,
                 *argv,
                 **kwargs
             )

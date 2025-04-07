@@ -11,17 +11,30 @@ from mindxlib import ShapExplainer
 
 
 def test_numpy_regression():
-    import xgboost
-    import shap
     import numpy as np
-    X = np.array([[1, 2], [2, 4], [3, 1], [4, 3], [5, 3], [6, 2]])
-    y = np.array([1, 2, 3, 4, 5, 6])
+    from mindxlib import ShapExplainer
+    import xgboost
+
+    # Prepare regression data with more samples
+    X = np.array([
+        [1, 2], [2, 4], [3, 1], [4, 3], [5, 3], [6, 2],[2, 1], [3, 4], [4, 2], 
+        [5, 1], [6, 3], [7, 2], [3, 3], [4, 1], [5, 4], [6, 1], [7, 3], [8, 2]
+    ])
+    y = np.array([1, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 7, 3, 4, 5, 6, 7, 8])
+
+    # Train XGBoost regressor
     model = xgboost.XGBRegressor()
     model.fit(X, y)
 
+    # Initialize explainer
     explainer = ShapExplainer(model, link="identity")
-    explanation = explainer.explain(X[:3], baseline=X[3:6], mode="match")
-    explanation.show(type='bar', index=2)
+
+    # Generate explanations with matched baselines
+    # Using more samples for both explanation and baseline
+    explanation = explainer.explain(X[9:18], baseline=X[:9], mode="match")
+
+    # Show bar plot for specific sample
+    explanation.show(type='waterfall', index=0)
 
 def test_iris():
     import sklearn
@@ -47,7 +60,7 @@ def test_adult_scatter():
     explanation = explainer.explain(X[:1000], baseline=X, mode="origin")
     explanation.show('scatter', feature='Age')
 
-def test_official_kernelshap():
+def test_official_tree_shap():
     import xgboost
 
     import shap
@@ -57,7 +70,7 @@ def test_official_kernelshap():
     model = xgboost.XGBClassifier()
     model.fit(X, y)
 
-    explainer = ShapExplainer(model, link="logit")
+    explainer = ShapExplainer(model, method="tree", link="logit")
     explanation = explainer.explain(X[:3], baseline=X[3:6], mode="match")
     explanation.show(type='waterfall', index=2, class_index=1)  # Show first class
 
