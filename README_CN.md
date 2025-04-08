@@ -51,11 +51,10 @@ explanation.show('scatter', feature='Age')
 import pandas as pd
 import numpy as np
 from mindxlib import SSRL
+from mindxlib.data import tic_tac_toe
 
-# 加载tic-tac-toe数据集
-data = pd.read_csv('dataset/tic_tac_toe.csv', header=None)
-y = data.iloc[:,-1]
-X = data.iloc[:,:-1]
+# Load tic-tac-toe dataset
+X, y = tic_tac_toe()
 
 # 初始化并训练SSRL
 explainer = SSRL(cc=10, lambda_1=1, distorted_step=10, 

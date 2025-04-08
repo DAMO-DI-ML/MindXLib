@@ -16,3 +16,5 @@ exclude requirements-dev.txt
 
 # Keep requirements.txt since it's needed for installation
 include requirements.txt
+
+include mindxlib/datasets/*.csv

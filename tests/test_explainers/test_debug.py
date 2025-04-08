@@ -1,19 +1,20 @@
-import xgboost
-import shap # for loading the dataset
-from mindxlib import ShapExplainer
+import pandas as pd
+import numpy as np
+from mindxlib import SSRL
+from mindxlib.data import tic_tac_toe
 
-# Load adult dataset
-X, y = shap.datasets.adult()
+# Load tic-tac-toe dataset
+X, y = tic_tac_toe()
 
-# Train XGBoost classifier
-model = xgboost.XGBClassifier()
-model.fit(X, y)
+# 初始化并训练SSRL
+explainer = SSRL(cc=10, lambda_1=1, distorted_step=10, 
+                categorical_features=X.columns.tolist())
+explainer.fit(X, y)
 
-# Initialize Tree SHAP explainer
-explainer = ShapExplainer(model, method="tree")
+# 展示学习到的规则
+explainer.show()
 
-# Generate explanations
-explanation = explainer.explain(X[:1000], baseline=X, mode="origin")
-
-# Show waterfall plot for third sample's positive class
-explanation.show(type='bar', class_index=1)
+# 进行预测
+predictions = explainer.predict(X)
+acc = np.sum(predictions.values == y.values) / y.shape[0]
+print(f'训练准确率: {acc:.2f}')

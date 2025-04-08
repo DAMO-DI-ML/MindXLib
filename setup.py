@@ -1,5 +1,5 @@
 import platform
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # Read requirements from requirements.txt
 def get_requirements():
@@ -27,14 +27,14 @@ def get_binary_paths():
     return binary_paths
 
 setup(
-    use_scm_version={
-        "write_to": "mindxlib/_version.py",
-        "write_to_template": '__version__ = "{version}"',
-    },
-    install_requires=get_requirements(),
-    include_package_data=True,
+    name="mindxlib",
+    version="0.1.0",
+    packages=find_packages(),
     package_data={
-        'mindxlib': get_binary_paths()
+        'mindxlib': get_binary_paths(),
+        'mindxlib.datasets': ['*.csv'],
     },
+    include_package_data=True,
+    install_requires=get_requirements(),
     zip_safe=False,
 )
