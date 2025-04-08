@@ -27,13 +27,13 @@ class ShapExplainer(FeatureImportanceExplainer):
   - link="identity": uses predict()
   - link="logit": uses predict_proba()
 
-- **method** : str, default="auto"
+- **method** : `str`, default="auto"
   - "kernel": Uses shap.KernelExplainer - Works with any model
   - "tree": Uses shap.TreeExplainer - Optimized for tree models
   - "linear": Uses shap.LinearExplainer - Optimized for linear models
   - "auto": Automatically selects best explainer
 
-- **link** : str, default="identity"
+- **link** : `str`, default="identity"
   - "identity": Raw model output
   - "logit": Probability predictions (requires predict_proba)
 
@@ -51,24 +51,24 @@ def explain(self,
 ```
 
 **Parameters:**
-- **data** : numpy.ndarray or pandas.DataFrame
+- **data** : `numpy.ndarray` or `pandas.DataFrame`
   - Samples to explain
   - Shape: (n_samples, n_features)
 
-- **baseline** : numpy.ndarray or pandas.DataFrame
+- **baseline** : `numpy.ndarray` or `pandas.DataFrame`
   - Background data for computing SHAP values
   - Required parameter
   - Shape requirements:
     - match mode: (n_samples, n_features)
     - origin mode: (any_samples, n_features)
 
-- **mode** : str or int
+- **mode** : `str` or `int` 
   - How to use baseline data
   - Options:
     - "match" or 1: Pair each sample with specific baseline
     - "origin" or 0: Use all baseline data for each sample, similar to shap.Explainer
 
-- **kwargs** : dict
+- **kwargs** : 
   - Additional arguments passed to SHAP explainers:
     - For KernelExplainer: nsamples, silent
     - For TreeExplainer: check_additivity
@@ -76,17 +76,17 @@ def explain(self,
 
 **Returns:**
 - For mode="match":
-  - MultipleShapExplanations object containing list of ShapExplanation objects:
-    - Each ShapExplanation has:
-      - data[i,:]: One sample from input
-      - feature_importance[i]: SHAP values for that sample
-      - shap_explanation[i]: Original SHAP Explanation for that sample
+  - `MultipleShapExplanations` object containing list of `ShapExplanation` objects:
+    - Each `ShapExplanation` has:
+      - `data[i,:]`: One sample from input
+      - `feature_importance[i]`: SHAP values for that sample
+      - `shap_explanation[i]`: Original SHAP Explanation for that sample
 
 - For mode="origin":
-  - Single ShapExplanation object containing:
-    - data: All input samples
-    - feature_importance: SHAP values for all samples
-    - shap_explanation: Original SHAP Explanation for all samples
+  - Single `ShapExplanation` object containing:
+    - `data`: All input samples
+    - `feature_importance`: SHAP values for all samples
+    - `shap_explanation`: Original SHAP Explanation for all samples
 
 ### show()
 
@@ -99,16 +99,16 @@ def show(self,
          )
 ```
 
-**Plot Types:**
+**Plot Types and Arguments:**
 - 'waterfall': Feature contributions to prediction
+  - index: `int` (default=0): Sample index to explain
+  - class_index: `int` (default=0): Class to explain for multiclass models
 - 'bar': Feature importance rankings
-- 'scatter': Feature dependence
-  - Single feature: SHAP vs feature values
-  - All features: Summary plot
-
-**Arguments:**
-- scatter: feature, class_index(default=0)
-- waterfall/bar: index(default=0), class_index(default=0)
+  - index: `int` (default=0): Sample index to explain
+  - class_index: `int` (default=0): Class to explain for multiclass models
+- 'scatter': Feature dependence plots
+  - feature: `str` (default=None): Feature name for single feature plot
+  - class_index: `int` (default=0): Class to explain for multiclass models
 
 ## Examples
 
@@ -146,7 +146,7 @@ explanation.show(type='waterfall', class_index=1)
 
 **Waterfall Plot Output:**
 
-![Waterfall plot showing how each feature contributes to the prediction](waterfall.png)
+![Waterfall plot showing how each feature contributes to the prediction](../../docs/pics/waterfall.png)
 
 This waterfall plot shows:
 - Baseline prediction (E[f(X)]) starts at 0.259
@@ -181,7 +181,7 @@ explanation.show(type='bar', class_index=1)
 
 **Bar Plot Output:**
 
-![Bar plot showing SHAP values for each feature](bar.png)
+![Bar plot showing SHAP values for each feature](../../docs/pics/bar.png)
 
 This bar plot shows:
 - Capital Gain has the strongest negative impact (-3.14)
@@ -201,7 +201,7 @@ explanation.show('scatter', feature='Age')
 
 **Scatter Plot Output:**
 
-![Scatter plot showing SHAP values vs Age](scatter.png)
+![Scatter plot showing SHAP values vs Age](../../docs/pics/scatter.png)
 
 This scatter plot shows:
 - X-axis: Age values from 20 to 90
@@ -240,7 +240,7 @@ explanation.show(type='waterfall', index=0)
 
 **Waterfall Plot Output:**
 
-![Waterfall plot showing matched feature contributions](waterfall_match.png)
+![Waterfall plot showing matched feature contributions](../../docs/pics/match.png)
 
 This plot shows:
 - Match mode pairs each sample with its baseline
@@ -254,7 +254,7 @@ This plot shows:
 
 ## Implementation Notes
 
-Current E[f(X)] behavior:
+Current y label E[f(X)]:
 - Match mode: Shows baseline value (not expectation)
 - Origin mode: Shows expectation over all baselines
 - Future: Will allow custom y-axis labels instead of E[f(X)]

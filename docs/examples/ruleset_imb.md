@@ -1,13 +1,15 @@
-# RuleSet
+# RuleSetImb
 
-RuleSet implements a rule-based classifier using submodular optimization to discover discriminative patterns. The algorithm efficiently learns a compact set of rules that maximize coverage of the positive class while maintaining interpretability.
+RuleSetImb implements a rule-based classifier for imbalanced data that learns a set of discriminative rules through combinatorial optimization. The algorithm is particularly effective for binary classification tasks with class imbalance.
 
 ## Class Definition
 
 ```python
-class mindxlib.explainer.RuleSet(
+class mindxlib.explainer.RuleSetImb(
     max_num_rules: int = 16,
     time_limit: int = 60,
+    factor_g: float = 0.0,
+    local_search_iter: int = 0,
     beta_pos: float = 1.0,
     beta_neg: float = 1.0,
     beta_diverse: float = 0.1,
@@ -33,6 +35,12 @@ class mindxlib.explainer.RuleSet(
 
 - **time_limit** : `int`, default=60
   - Maximum optimization time in seconds
+
+- **factor_g** : `float`, default=0.0
+  - Growth factor for rule expansion
+
+- **local_search_iter** : `int`, default=0
+  - Number of local search iterations
 
 - **beta_pos** : `float`, default=1.0
   - Weight for positive class coverage
@@ -128,7 +136,7 @@ def predict(X_test: Union[pd.DataFrame, np.ndarray]) -> pd.Series
 ### Basic Usage
 
 ```python
-from mindxlib import RuleSet
+from mindxlib import RuleSetImb
 import pandas as pd
 import numpy as np
 
@@ -139,15 +147,15 @@ X = pd.DataFrame({
 })
 y = pd.Series([0, 1, 1, 0, 1], name='is_anomaly')  # 1 indicates anomaly
 
-# Initialize RuleSet
-explainer = RuleSet(
-    max_num_rules=3, 
-    time_limit=60, 
+# Initialize RuleSetImb
+explainer = RuleSetImb(
+    max_num_rules=15, 
+    time_limit=120, 
     verbose=True,
     feature_prefix='feature_',
     binarize_features=True,
     categorical_features=[],
-    num_thresh=3,
+    num_thresh=25,
     negation=True
 )
 

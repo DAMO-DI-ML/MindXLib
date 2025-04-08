@@ -208,7 +208,7 @@ gam = test_pandas_basic(X,y)
 train_size = int(0.8 * len(X))
 X_train, X_test = X[:train_size], X[train_size:]
 y_train, y_test = y[:train_size], y[train_size:]
-gam._prepare_viz_data(X_test, intercept=False, ci=True, alpha=0.05)
+# gam._prepare_viz_data(X_test, intercept=False, ci=True, alpha=0.05)
 # gam.show(data = X_test,mode='interactive',
 #          intercept=False, waterfall_height='80vh', ci = True)
 # gam._viz_waterfall
