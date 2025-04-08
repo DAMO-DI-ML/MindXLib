@@ -102,8 +102,12 @@ The algorithm package currently supports the following models:
 3. [IG (Integrated Gradients)](docs/examples/ig.md) - Path attribution method for deep learning models
 4. [GAM](docs/examples/gam.md) - Generalized Additive Models with shape functions
 
+### Time Series Explanation
+1. [FDTemp](docs/examples/fdtemp.md) - Functional Decomposition Temperature method for explaining temporal black-box models
+
 ## Related Papers
 1. [Efficient Decision Rule List Learning via Unified Sequence Submodular Optimization](https://dl.acm.org/doi/10.1145/3637528.3671827)
 2. [SLIM: a Scalable Light-weight Root Cause Analysis for Imbalanced Data in Microservice](https://dl.acm.org/doi/pdf/10.1145/3639478.3643098)
 3. [Interactive Generalized Additive Models for Electricity Load Forecasting](https://dl.acm.org/doi/10.1145/3580305.3599533)
 4. [Learning Interpretable Decision Rule Sets: A Submodular Optimization Approach](https://arxiv.org/abs/2206.03718)
+5. [Explain temporal black-box models via functional decomposition](https://dl.acm.org/doi/10.5555/3692070.3694400)

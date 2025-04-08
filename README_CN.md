@@ -100,8 +100,12 @@ ELSE positive
 3. [IG (Integrated Gradients)](docs/examples/ig.md) - 深度学习模型的路径归因方法
 4. [GAM](docs/examples/gam.md) - 具有形状函数的广义加性模型
 
+### 时序归因方法
+1. [FDTemp](docs/examples/fdtemp.md) - 基于函数分解的时序黑盒模型解释方法
+
 ## 相关论文
 1. [Efficient Decision Rule List Learning via Unified Sequence Submodular Optimization](https://dl.acm.org/doi/10.1145/3637528.3671827)
 2. [SLIM: a Scalable Light-weight Root Cause Analysis for Imbalanced Data in Microservice](https://dl.acm.org/doi/pdf/10.1145/3639478.3643098)
 3. [Interactive Generalized Additive Models for Electricity Load Forecasting](https://dl.acm.org/doi/10.1145/3580305.3599533)
-4. [Learning Interpretable Decision Rule Sets: A Submodular Optimization Approach](https://arxiv.org/abs/2206.03718) 
+4. [Learning Interpretable Decision Rule Sets: A Submodular Optimization Approach](https://arxiv.org/abs/2206.03718)
+5. [Explain temporal black-box models via functional decomposition](https://dl.acm.org/doi/10.5555/3692070.3694400) 
