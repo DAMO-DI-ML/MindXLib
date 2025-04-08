@@ -172,3 +172,9 @@ fraud_predictions = explainer.predict(test_data)
 # Show the rules in pure text
 explainer.rules.show()
 ```
+
+## Reference
+
+This rule-based classifier has been successfully applied in:
+
+Ren, Rui, Jingbang Yang, Linxiao Yang, Xinyue Gu, and Liang Sun. "[SLIM: a Scalable Light-weight Root Cause Analysis for Imbalanced Data in Microservice](https://dl.acm.org/doi/pdf/10.1145/3639478.3643098)." In Proceedings of the 2024 IEEE/ACM 46th International Conference on Software Engineering: Companion Proceedings, pp. 328-330. 2024.
