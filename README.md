@@ -1,6 +1,8 @@
 # MindXLib
 
-MindXLib是达摩院决策智能实验室数据决策团队在XAI(Explainable AI，可解释机器学习)领域深耕，展示算法成果的一个open toolkit。
+MindXLib is an open toolkit ensemble of algorithmic achievements in XAI (Explainable AI) from the Data Decision Team at Alibaba DAMO Academy's Decision Intelligence Lab.
+
+[中文文档](README_CN.md)
 
 ## Installation
 
@@ -86,23 +88,23 @@ Training accuracy: 0.98
 ```
 
 ## Architecture
-目前算法包主支持的模型如下：
+The algorithm package currently supports the following models:
 
 ### Rule-based Methods
-1. [RuleSet](docs/examples/ruleset.md) - Rule-based classifier using submodular optimization
-2. [RuleSetImb](docs/examples/ruleset_imb.md) - Rule-based classifier optimized for imbalanced data
-3. [Diver](docs/examples/diver.md) - Rule discovery through combinatorial optimization
-4. [DrillUp](docs/examples/drillup.md) - Pattern detection algorithm for discriminative rules
-5. [SSRL (Scalable Sparse Rule Lists)](docs/examples/rulelist.md) - Efficient decision rule list learning
+1. [RuleSet](docs/examples/ruleset.md) - Rule-based classifier using submodular optimization that supports binary classification
+2. [RuleSetImb](docs/examples/ruleset_imb.md) - Rule-based classifier optimized for imbalanced data that supports binary classification
+3. [Diver](docs/examples/diver.md) - Rule discovery through combinatorial optimization that supports binary classification
+4. [DrillUp](docs/examples/drillup.md) - Pattern detection algorithm for discriminative rules that supports binary classification
+5. [SSRL (Scalable Sparse Rule Lists)](docs/examples/rulelist.md) - Efficient decision rule list learning that supports **multi-class** classification
 
 ### Feature Attribution Methods
-1. [SHAP](docs/examples/shap.md) - SHapley Additive exPlanations for model interpretation
+1. [SHAP](docs/examples/shap.md) - SHapley Additive exPlanations for model interpretation, providing customizable baselines and a user-friendly interface
 2. [LIME](docs/examples/lime.md) - Local Interpretable Model-agnostic Explanations
 3. [IG (Integrated Gradients)](docs/examples/ig.md) - Path attribution method for deep learning models
 4. [GAM](docs/examples/gam.md) - Generalized Additive Models with shape functions
 
-## Related papers
+## Related Papers
 1. [Efficient Decision Rule List Learning via Unified Sequence Submodular Optimization](https://dl.acm.org/doi/10.1145/3637528.3671827)
 2. [SLIM: a Scalable Light-weight Root Cause Analysis for Imbalanced Data in Microservice](https://dl.acm.org/doi/pdf/10.1145/3639478.3643098)
 3. [Interactive Generalized Additive Models for Electricity Load Forecasting](https://dl.acm.org/doi/10.1145/3580305.3599533)
-4. [Learning Interpretable Decision Rule Sets: A Submodular Optimization Approach](https://arxiv.org/abs/2206.03718) (NeurIPS 2021 Spotlight)
+4. [Learning Interpretable Decision Rule Sets: A Submodular Optimization Approach](https://arxiv.org/abs/2206.03718)
