@@ -167,4 +167,4 @@ explainer.rules.show()
 
 ## References
 
-1. Yang, Fan, Kai He, Linxiao Yang, Hongxia Du, Jingbang Yang, Bo Yang, and Liang Sun. "[Learning Interpretable Decision Rule Sets: A Submodular Optimization Approach](https://arxiv.org/abs/2206.03718)." In Advances in Neural Information Processing Systems (NeurIPS), vol. 34, pp. 27890-27902. 2021. (Spotlight)
+1. Yang, Fan, Kai He, Linxiao Yang, Hongxia Du, Jingbang Yang, Bo Yang, and Liang Sun. "[Learning Interpretable Decision Rule Sets: A Submodular Optimization Approach](https://arxiv.org/abs/2206.03718)." In Advances in Neural Information Processing Systems (NeurIPS), vol. 34, pp. 27890-27902. 2021. 
