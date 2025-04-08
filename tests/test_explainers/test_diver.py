@@ -64,6 +64,34 @@ def test_diver_with_dataframe():
     predictions = driver.predict(test_df)
     print("Predictions:", predictions.tolist())
     
+
+
+def test_diver_with_dataframe_1():
+    ## Examples
+
+
+    # Create sample data
+    # Binary classification example (anomaly detection)
+    X = pd.DataFrame({
+        'age': [25, 35, 45, 55, 22, 28, 32, 42],
+        'income': [30000, 45000, 60000, 75000, 75000, 50000, 65000, 40000],
+        'credit_score': [650, 720, 580, 800, 620, 710, 690, 550]
+    })
+    y = pd.Series([0, 0, 1, 0, 1, 0, 0, 1], name='is_anomaly')  # 1 indicates anomaly
+
+    
+    explainer = Diver(
+    label_col='is_anomaly',
+    label_val=1,  # We're interested in rules for anomalies
+    pos_beta=1.5,  # Higher weight on catching anomalies
+    overlap_beta_=0.3,  # Moderate penalty for rule overlap
+    complexity_cost=0.001,  # Small penalty for longer rules
+    dim_list=['age', 'income'],  # Focus on these features
+    sup_ratio=0.2  # Minimum 20% support in anomaly class
+    )
+
+    explainer.fit(X, y)
+
 def test_diver_from_csv():
     data = pd.read_csv('dataset/tic_tac_toe.csv', header=None)
     y = data.iloc[:,-1]
@@ -104,4 +132,4 @@ def test_diver_from_csv():
 
 
 if __name__ == "__main__":
-    test_diver_with_numpy()
+    test_diver_with_dataframe_1()
