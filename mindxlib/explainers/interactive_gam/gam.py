@@ -7,8 +7,6 @@ from scipy.linalg import circulant
 from scipy.optimize import nnls
 import copy
 import numba as nb
-from mindxlib.visualization.plots import plot_static_gam
-from mindxlib.visualization.interactive import create_app
 
 @nb.jit(nopython=True)
 def ReLu_product(x,w,split,index_list):
@@ -1271,8 +1269,10 @@ class GAM:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
             
         if mode == 'static':
+            from mindxlib.visualization import plot_static_gam
             return plot_static_gam(self, data, **kwargs)
         elif mode == 'interactive':
+            from mindxlib.visualization import create_app
             # Generate visualization data if not already stored
             if (self._viz_data is None or 
                 self._viz_model_info is None or 

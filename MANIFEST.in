@@ -1,0 +1,20 @@
+# This file controls what files are included in the source distribution.
+# setuptools-scm will by default include everything managed by git,
+# so we need to manually exclude things we don't want to include.
+
+# Exclude development and documentation files/directories
+prune .github
+prune docs
+prune tests
+prune notebooks
+
+# Exclude specific files
+exclude .gitignore
+exclude .pre-commit-config.yaml
+exclude CONTRIBUTING.md
+exclude requirements-dev.txt
+
+# Keep requirements.txt since it's needed for installation
+include requirements.txt
+
+include mindxlib/datasets/*.csv
