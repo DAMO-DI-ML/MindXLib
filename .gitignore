@@ -49,3 +49,4 @@ htmlcov/
 *.ipynb
 *_data.json
 *.ipynb
+*.pt
