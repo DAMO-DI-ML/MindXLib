@@ -101,6 +101,7 @@ class FDTempExplainer(FeatureImportanceExplainer):
 
         # Store the explanation
         self._explanation = FeatureImportanceExplanation(
+            data=None,
             feature_importance=self.attribution_results
         )
         
