@@ -3,18 +3,20 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 class Explanation(ABC):
-    def __init__(self):
+    def __init__(self, data):
         """base class for all explanation results
         Args:
             data: original input data (unified to DataFrame, time series expanded to multiple columns)
         """
         # self.data = data
 
+    @abstractmethod
     def validate(self):
         """validate the legitimacy of the explanation results"""
         pass
 
-    def visualize(self):
+    @abstractmethod
+    def show(self):
         """general visualization interface"""
         pass
 
@@ -25,44 +27,45 @@ class RuleExplanation(Explanation):
         """Initialize rule explanation.
         
         Args:
-            data: Original input data
             rules: List of rules where each rule is a dictionary containing:
                 - condition: List of feature conditions
-                - prediction: Predicted class/value
-                - coverage: Set of covered example indices
+                - label_name: Predicted class/value
+                - covered: Set of covered example indices
+                - length: Length of the rule
             default_rule: Default prediction when no rules match
         """
-        super().__init__()
-        self.rules = rules
+        self.rules = rules  # List of rule dictionaries
         self.default_rule = default_rule
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert rule explanation to dictionary format."""
-        return {
-            "rules": self.rules,
-            "default_rule": self.default_rule
-        }
+    def validate(self):
+        pass
         
-    def print_rules(self):
+    def show(self):
         """Print rules in human-readable format."""
-        if len(self.rules) > 0:
-            print('IF ' + ' AND '.join(self.rules[0]['condition']) + 
-                  ' THEN ' + str(self.rules[0]['prediction']))
-            for rule in self.rules[1:]:
-                print('ELIF ' + ' AND '.join(rule['condition']) + 
-                      ' THEN ' + str(rule['prediction']))
-        print('ELSE ' + str(self.default_rule))
+        N = len(self.rules)
+        if N > 0:
+            print('IF '+' AND '.join(sorted(self.rules[0]['condition']))+', THEN '+str(self.rules[0]['label_name']))
+            for ii in range(1,N):
+                print('ELIF '+' AND '.join(sorted(self.rules[ii]['condition']))+', THEN '+str(self.rules[ii]['label_name']))
+            print('ELSE '+str(self.default_rule))
+        else:
+            print('IF THEN '+str(self.default_rule))
 
 class FeatureImportanceExplanation(Explanation):
     """Class for feature importance explanations."""
     
-    def __init__(self, feature_importance: Dict[str, float]):
+    def __init__(self, data, feature_importance: Dict[str, float]):
         """Initialize feature importance explanation.
         
         Args:
             feature_importance (Dict[str, float]): Dictionary mapping feature names to importance scores
         """
-        super().__init__()
+        super().__init__(data)
+        
+        self.data = data
+
+        if not isinstance(feature_importance, dict):
+            feature_importance = {"feature_importance": feature_importance}
         self.feature_importance = feature_importance
 
     def to_dict(self) -> Dict[str, Any]:
@@ -72,6 +75,12 @@ class FeatureImportanceExplanation(Explanation):
             Dict[str, Any]: Dictionary containing the feature importance scores
         """
         return {"feature_importance": self.feature_importance}
+    
+    def validate(self):
+        pass
+        
+    def show(self):
+        pass
 
 # shape function explanation (GAM)
 class GAMShapeFunctionExplanation(Explanation):

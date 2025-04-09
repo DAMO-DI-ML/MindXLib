@@ -4,8 +4,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 import warnings
-from mindxlib.base.explanation import RuleExplanation, FeatureImportanceExplanation
-
+from mindxlib.base.explanation import FeatureImportanceExplanation, GAMShapeFunctionExplanation, RuleExplanation
 """
 Base classes for explainable AI methods
 """
@@ -19,7 +18,7 @@ class ExplainerBase(ABC):
     """
     Base class for all explainers.
     """
-    def __init__(self, model, data=None, **kwargs):
+    def __init__(self, model=None, data=None, **kwargs):
         """
         Args:
             model: prediction model
@@ -43,14 +42,14 @@ class ExplainerBase(ABC):
         """support function call"""
         return self.explain(X, **kwargs)
 
-class RuleExplainerBase(ExplainerBase):
+class RuleExplainer(ExplainerBase):
     """Base class for rule-based explainers.
     
     This class provides common functionality for rule-based explanation methods
     like rule lists, rule sets, and decision lists.
     """
     
-    def __init__(self, model, data=None, **kwargs):
+    def __init__(self, data=None, model=None, **kwargs):
         """Initialize rule explainer
         
         Args:
@@ -59,8 +58,20 @@ class RuleExplainerBase(ExplainerBase):
             **kwargs: Additional arguments for specific rule learners
         """
         super().__init__(model, data, **kwargs)
-        self.rules = []
+    
+    @abstractmethod
+    def fit(self, X, y, **kwargs):
+        """Learn rules from data
         
+        Args:
+            X: Input features (DataFrame or ndarray)
+            y: Target labels (Series, DataFrame or ndarray)
+            **kwargs: Additional parameters
+            
+        Returns:
+            RuleExplanation object containing the learned rules
+        """
+        pass
     
     @abstractmethod
     def predict(self, X):
@@ -75,6 +86,9 @@ class RuleExplainerBase(ExplainerBase):
             Shape should be (n_samples,) where n_samples is X.shape[0]
         """
         pass
+    
+    def explain(self, X):
+        return self.predict(X)
 
     def _validate_input(self, X, y=None):
         """Validate and format input data
@@ -109,65 +123,19 @@ class RuleExplainerBase(ExplainerBase):
             if x_is_pandas != y_is_pandas:
                 raise ValueError(f'X and y must be same type - got X: {type(X).__name__}, y: {type(y).__name__}')
         return X, y
-
-    def explain(self, X, y=None, **kwargs):
-        """Generate rule-based explanations
         
-        Args:
-            X: Input features to explain
-            y: Optional ground truth labels
-            **kwargs: Additional explanation parameters
-            
-        Returns:
-            RuleExplanation object containing the learned rules
-        """
-        # Validate inputs
-        X, y = self._validate_input(X, y)
-        
-        # Fit if not already fit
-        if not self.rules:
-            if y is None:
-                raise ValueError("Must provide labels (y) when fitting rules")
-            self.fit(X, y, **kwargs)
-            
-        # Format rules for explanation
-        rule_texts = []
-        coverage = {}
-        
-        # Specific formatting logic should be implemented by child classes
-        return self._format_explanation(X, rule_texts, coverage)
-        
-    def _format_explanation(self, X, rule_texts, coverage):
-        """Format rules into explanation object
-        
-        Args:
-            X: Input data
-            rule_texts: List of rule strings 
-            coverage: Dict mapping rules to covered examples
-            
-        Returns:
-            RuleExplanation object
-        """
-        # Convert SSRL rulelist format to explanation format
-        rules = []
-        for rule in self.rulelist[:-1]:  # Skip default rule
-            rules.append({
-                'condition': rule['condition'],
-                'prediction': rule['label_name'],
-                'coverage': rule['covered']
-            })
-        
-        return RuleExplanation(
-            data=X,
-            rules=rules,
-            default_rule=self.defaultRuleName
-        )
+    def show(self):
+        """Display learned rules"""
+        if hasattr(self, 'rules'):
+            self.rules.show()
+        else:
+            raise ValueError("Must call fit() before show()")
 
 class FeatureImportanceExplainer(ExplainerBase):
     """Base class for feature importance/attribution explainers.
     
     This class provides common functionality for attribution methods that explain
-    feature importance, including both traditional methods (SHAP, LIME) and 
+    feature importance, including both traditional methods (IG, SHAP, LIME) and 
     time series methods (FDTemp).
     """
     
@@ -182,7 +150,7 @@ class FeatureImportanceExplainer(ExplainerBase):
         super().__init__(model, **kwargs)
         self.data = data
         
-    def explain(self, data, baseline=None, **kwargs):
+    def explain(self, data, baseline=None, target_labels=None, **kwargs):
         """Generate feature importance explanations
         
         Args:
@@ -191,6 +159,8 @@ class FeatureImportanceExplainer(ExplainerBase):
                 For time series: shape (n_samples, n_timesteps, n_features)
             baseline: Optional reference values for computing feature importance
                 Default is None, in which case method-specific defaults are used
+                For tabular data: shape (n_features) or (n_samples, n_features)
+                For time series: shape (n_timesteps, n_features) or (n_samples, n_timesteps, n_features)
             **kwargs: Additional explanation parameters
             
         Returns:
@@ -198,14 +168,45 @@ class FeatureImportanceExplainer(ExplainerBase):
         """
         # Validate inputs
         data = self._validate_data(data)
+
         if baseline is not None:
-            baseline = self._validate_baseline(baseline, data)
-            
+            self._validate_baseline(baseline, data, **kwargs)
+        
+        baseline = self._initial_baseline(data, baseline, **kwargs)
+
+        
         # Generate attributions (to be implemented by child classes)
         attributions = self._compute_attributions(data, baseline, **kwargs)
         
         return self._format_explanation(data, attributions)
     
+    def _validate_baseline(self, baseline, data, **kwargs):
+
+        """Validate baseline reference values
+        
+        Args:
+            baseline: Baseline values
+            data: Input data for shape reference
+            
+        Returns:
+            Validated baseline array
+        """
+        baseline = np.array(baseline)
+        if baseline.shape[-1] != data.shape[-1]:
+            raise ValueError("Baseline must have same number of features as data")
+        return baseline
+    
+
+    def _initial_baseline(self, data, baseline, **kwargs):
+        """Initial baseline by method
+        Args:
+            data Input data for shape reference
+
+        Returns:
+            Initialized baseline array
+        """
+        return None
+
     def _validate_data(self, data):
         """Validate and format input data
         
@@ -222,21 +223,6 @@ class FeatureImportanceExplainer(ExplainerBase):
                 raise ValueError(f"Data must be array-like, got {type(data)}")
                 
         return data
-    
-    def _validate_baseline(self, baseline, data):
-        """Validate baseline reference values
-        
-        Args:
-            baseline: Baseline values
-            data: Input data for shape reference
-            
-        Returns:
-            Validated baseline array
-        """
-        baseline = np.array(baseline)
-        if baseline.shape[-1] != data.shape[-1]:
-            raise ValueError("Baseline must have same number of features as data")
-        return baseline
     
     @abstractmethod
     def _compute_attributions(self, data, baseline=None, **kwargs):
@@ -266,7 +252,7 @@ class FeatureImportanceExplainer(ExplainerBase):
 
         return FeatureImportanceExplanation(
             data=data,
-            attributions=attributions
+            feature_importance=attributions
         )
 
 # class BlackBoxBase(ExplainerBase):

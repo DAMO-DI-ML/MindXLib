@@ -8,7 +8,8 @@ import time
 import ast
 from mip import Model, xsum, minimize, BINARY, CONTINUOUS, Constr, Column, MINIMIZE
 from sklearn.metrics import balanced_accuracy_score, accuracy_score
-
+from mindxlib.base.explainer import RuleExplainer
+from mindxlib.base.explanation import RuleExplanation
 # import features
 # from datautil import DatasetLoader
 
@@ -22,6 +23,41 @@ logging.basicConfig(
 # logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger()
 
+class DiverExplanation(RuleExplanation):
+    def __init__(self, rules, default_rule=0):
+        self.rules = rules  # 规则列表，每个规则是一个包含多个 'feature:value' 字符串的列表
+        self.default_rule = default_rule  # 默认规则
+
+    def show(self):
+        """Override show method to print rules in custom format."""
+        N = len(self.rules)
+        if N > 0:
+            # 输出第一个规则
+            print(f"IF {self._format_conditions(self.rules[0])}, THEN 1")
+            # 输出其余的规则
+            for ii in range(1, N):
+                print(f"ELIF {self._format_conditions(self.rules[ii])}, THEN 1")
+            # 输出默认规则
+            print("ELSE 0")
+        else:
+            # 如果没有规则，仅输出默认规则
+            print(f"IF THEN {self.default_rule}")
+
+    def _format_conditions(self, conditions):
+        """
+        Helper method to format the conditions of a rule into a readable string.
+        
+        Parameters:
+            conditions (list of str): List of 'feature:value' strings.
+            
+        Returns:
+            str: Formatted condition string.
+        """
+        formatted_conditions = []
+        for condition in conditions:
+            feature, value = condition.split(':')
+            formatted_conditions.append(f"{feature}=={value}")
+        return " AND ".join(formatted_conditions)
 
 class Itemset(object):
     '''
@@ -551,7 +587,7 @@ def pattern_to_dict(p):
 # filter_dict1 = pattern_to_dict(pat)
 # filter_df = res.loc[(res[list(filter_dict1)] == pd.Series(filter_dict1)).all(axis=1)]
 
-class Diver():
+class Diver(RuleExplainer):
     def __init__(self, label_col, label_val, pos_beta=1.5, overlap_beta_=0.2,
                  complexity_cost=0.00001,dim_list=None,sup_ratio=0.01,
                 write_model=False, disable_log=True, cache_ind=False):
@@ -566,8 +602,22 @@ class Diver():
         self.disable_log = disable_log
         self.cache_ind = cache_ind
 
-    def fit(self, X, y):
-        data_df = pd.concat((X, y.to_frame()), axis=1)
+    def fit(self, X, y, X_columns=None, y_column=None,default_label=None):
+        self.X_columns = X_columns
+        X = self._ensure_dataframe(X,columns=self.X_columns)
+        y = self._ensure_dataframe(y,columns=y_column if y_column else ['label'])
+
+
+        label_counts = y.value_counts()
+        if default_label is None:
+            default_label = label_counts.idxmax()
+            print(f"Using default rule name: {default_label} (most frequent class in data)")
+        elif default_label not in list(label_counts.index):
+            raise ValueError(f'default_label is not in the data: got {default_label}, expected one of {list(label_counts.index)}')
+        self.default_label = default_label
+
+        data_df = pd.concat((X, y), axis=1)
+        data_df.columns = [str(col) for col in data_df.columns]
         label_cnt = data_df[self.label_col].value_counts()
         label_info = [(label_cnt.index[k], label_val) for (k, label_val) in enumerate(label_cnt)]
         sort_label_info = sorted(label_info, key=lambda x: x[1])
@@ -587,21 +637,54 @@ class Diver():
         for each_rule in res['lp_res']['short_rule']:
             print(each_rule, self.label_val)
             # print([self.dim_list.index(i) for i in each_rule])
-            output_rule.append(each_rule)
-            add = Rule([self.dim_list.index(i) for i in each_rule], self.label_val)
+
+            output_rule.append(list(each_rule))
+            add = Rule([self.dim_list.index(i.split(":")[0]) for i in each_rule], self.label_val)
             diver_rule.append(add)
         self.return_rule = output_rule
         self.diver_rule = diver_rule
+
+        self.rules = DiverExplanation(rules=self.return_rule, default_rule=self.default_label)
         return self
 
     def predict(self, X_test):
+        X_test = self._ensure_dataframe(X_test,columns=self.X_columns)
         Xtest_list = [Transaction(feat2item(t)) for t in X_test.values]
         ypredict_diver = predict_all(self.diver_rule, self.default_label, Xtest_list)
+        ypredict_diver = self._ensure_dataframe(ypredict_diver,columns=['label']).iloc[:,0]
         return ypredict_diver
         # bacc = balanced_accuracy_score(y_test, ypredict_diver)
         # acc = accuracy_score(y_test, ypredict_diver)
 
-
+    def _ensure_dataframe(self, X, columns=None):
+        """
+        Ensure the input is a pandas DataFrame.
+        
+        Parameters:
+            X (numpy.ndarray, pandas.DataFrame, or pandas.Series): Input data.
+            columns (list of str, optional): Column names for the DataFrame if X is a numpy array or Series.
+            
+        Returns:
+            pandas.DataFrame: The input data as a DataFrame.
+        """
+        if isinstance(X, np.ndarray):
+            logging.info("Converting numpy array to DataFrame.")
+            return pd.DataFrame(X, columns=columns)  # 如果columns为None，Pandas会自动生成默认列名
+        elif isinstance(X, pd.DataFrame):
+            return X
+        elif isinstance(X, pd.Series):
+            logging.info("Converting pandas Series to DataFrame.")
+            if columns is not None and isinstance(columns, list) and len(columns) == 1:
+                df = pd.DataFrame(X)
+                df.columns = columns
+                return df
+            else:
+                columns=['0'] if columns is None else columns
+                df = pd.DataFrame(X)
+                df.columns = columns
+                return df
+        else:
+            raise TypeError("Input data must be either a numpy array, pandas DataFrame, or pandas Series.")
     # core drill up procedure
     def drillUp(self, c_df, label_col, label_val, dim_list,
                 sup_ratio,
