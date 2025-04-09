@@ -48,4 +48,4 @@ ENV/
 htmlcov/
 *.ipynb
 *_data.json
-
+*.ipynb

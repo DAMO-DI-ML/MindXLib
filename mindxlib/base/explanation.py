@@ -8,7 +8,7 @@ class Explanation(ABC):
         Args:
             data: original input data (unified to DataFrame, time series expanded to multiple columns)
         """
-        self.data = data
+        # self.data = data
 
     @abstractmethod
     def validate(self):
