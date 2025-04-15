@@ -1,6 +1,6 @@
 dash==3.0.0
 dash_bootstrap_components>=1.0.0
-dask==2025.3.0
+# dask>=2022.6.1
 lime>=0.2.0
 matplotlib~=3.10.1
 mip>=1.14.0
