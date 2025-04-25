@@ -49,7 +49,43 @@ class RuleExplanation(Explanation):
                 print('ELIF '+' AND '.join(sorted(self.rules[ii]['condition']))+', THEN '+str(self.rules[ii]['label_name']))
             print('ELSE '+str(self.default_rule))
         else:
-            print('IF THEN '+str(self.default_rule))
+            print('No rules found, default rule: '+str(self.default_rule))
+
+
+class RuleSetExplanation(RuleExplanation):
+    """Class for rule-based explanations where each rule is independent (no ELIF/ELSE).
+    Used by RuleSet, RuleSetImb, and Diver explainers."""
+    
+    def __init__(self, rules: List[str], default_rule: Any, label_map: dict = None):
+        """Initialize rule set explanation.
+        
+        Args:
+            rules: List of rules as strings
+            default_rule: Default prediction when no rules match
+            label_map: Optional mapping from binary (0/1) to original labels
+        """
+        super().__init__(rules, default_rule)
+        self.label_map = label_map
+
+    def show(self):
+        """Print rules in independent IF-THEN format."""
+        N = len(self.rules)
+        if N > 0:
+            for rule in self.rules:
+                # Handle both string rules and dictionary rules
+                if isinstance(rule, str):
+                    # If we have a label map, use original labels
+                    if self.label_map:
+                        then_label = self.label_map[1]
+                        else_label = self.label_map[0]
+                    else:
+                        then_label = 1
+                        else_label = 0
+                    print(f"IF {rule}, THEN {then_label}, ELSE {else_label}")
+                else:
+                    print(f"IF {' AND '.join(sorted(rule['condition']))}, THEN {rule['label_name']}")
+        else:
+            print(f"No rules found, default rule: {self.default_rule}")
 
 class FeatureImportanceExplanation(Explanation):
     """Class for feature importance explanations."""

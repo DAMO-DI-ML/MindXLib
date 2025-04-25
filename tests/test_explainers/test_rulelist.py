@@ -1,8 +1,6 @@
 import numpy as np
 from mindxlib import SSRL
 import pandas as pd
-# from mindxlib.explainers.rules.rulelist import SSRL
-# from mindxlib.utils.features import FeatureBinarizer
 
 def test_rulelist_with_numpy():
     # Create numpy array with meaningful feature names
@@ -111,15 +109,23 @@ def test_rulelist_with_pandas():
 
 
 def test_rulelist_from_csv():
+    # from mindxlib import RuleSetImb
     data = pd.read_csv('dataset/tic_tac_toe.csv', header=None)
     y = data.iloc[:,-1]
     X = data.iloc[:,:-1]
+    y = y.map({'positive':1,'negative':0})
+    from sklearn.model_selection import train_test_split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     explainer = SSRL(cc=10, lambda_1=1, distorted_step=10, categorical_features=X.columns.tolist())
-    explainer.fit(X, y)
+    # explainer = RuleSetImb(num_thresh=5,
+    #                        negation=True,
+    #                        max_num_rules=20,
+    #                        beta_diverse=0.01)
+    explainer.fit(X_train, y_train,default_label=0)
     explainer.show()
-    predictions = explainer.predict(X)
-    acc = np.sum(1.0*(predictions.values==y.values))/y.shape[0]
-    breakpoint()
+    predictions = explainer.predict(X_test)
+    acc = np.sum(1.0*(predictions.values==y_test.values))/y_test.shape[0]
+
     print(f'The training acc is {acc:.2f}')
     '''
     IF 1==o AND 4==o AND 7==o, THEN negative
@@ -132,6 +138,20 @@ def test_rulelist_from_csv():
     ELIF 2!=x AND 4!=x AND 6!=x, THEN negative
     ELSE positive
     The training acc is 0.98
+    （rulelist）
+
+    IF 0!=o AND 4!=o AND 8!=o, THEN 1
+ELIF 2!=o AND 4!=o AND 6!=o, THEN 1
+ELIF 0==x AND 3==x AND 6==x, THEN 1
+ELIF 3==x AND 4==x AND 5==x, THEN 1
+ELIF 0==x AND 1==x AND 2==x, THEN 1
+ELIF 1==x AND 4==x AND 7==x, THEN 1
+ELIF 6==x AND 7==x AND 8==x, THEN 1
+ELIF 2==x AND 5==x AND 8==x, THEN 1
+ELIF 2!=o AND 3==b AND 7!=o AND 8!=o, THEN 1
+ELSE 0
+The training acc is 1.00
+(ruleset_imb)
     '''
 
 def test_rulelist_multiclass_with_pandas():
@@ -194,4 +214,4 @@ def test_rulelist_multiclass_with_pandas():
 
 
 
-test_rulelist_multiclass_with_pandas()
+test_rulelist_from_csv()

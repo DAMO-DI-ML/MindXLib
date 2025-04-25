@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from mindxlib.explainers.rules.ruleset import RuleSetImb
+from mindxlib import RuleSetImb
 
 
 def test_rulelset_imb_with_numpy():
@@ -47,7 +46,7 @@ def test_ruleset_imb_from_csv():
     data = pd.read_csv('dataset/tic_tac_toe.csv', header=None)
     y = data.iloc[:,-1]
     print(y.value_counts())
-    y = y.map({'negative': 0, 'positive': 1})
+    # y = y.map({'negative': 0, 'positive': 1})
     X = data.iloc[:,:-1]
     explainer = RuleSetImb(
         max_num_rules=15, 
@@ -59,7 +58,7 @@ def test_ruleset_imb_from_csv():
         num_thresh=25,
         negation=True
     )
-    explainer.fit(X, y)
+    explainer.fit(X, y, default_label='positive')
     
     explainer.show()
     predictions = explainer.predict(X)

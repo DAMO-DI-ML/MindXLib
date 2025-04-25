@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from mindxlib.explainers.interactive_gam.gam import GAM
+from mindxlib import GAM
 from sklearn.metrics import mean_squared_error, r2_score
 
 def generate_synthetic_data(n_samples=1000, noise_level=0.1, random_state=42):
@@ -12,14 +12,14 @@ def generate_synthetic_data(n_samples=1000, noise_level=0.1, random_state=42):
     
     # Generate features
     x1 = np.random.uniform(-1, 10, n_samples)
-    x2 = np.random.uniform(-10, 1, n_samples)
-    x3 = np.random.normal(-15, 15, n_samples)
+    x2 = np.random.normal(-10, 1, n_samples)
+    x3 = np.random.uniform(-15, 15, n_samples)
     
     # Generate noise
     noise = np.random.normal(0, noise_level, n_samples)
     
     # Generate target
-    y = x1 + 10 * (x2 ** 2) - np.sin(x3 ** 3) + noise
+    y = x1 + 10 * (x2 ** 2) - np.sin(x3) + noise
     
     # Create DataFrame
     X = pd.DataFrame({
@@ -52,7 +52,7 @@ def test_pandas_basic(X,y):
     r2 = r2_score(y_test, y_pred)
     
     print(f"Mean Squared Error: {mse:.4f}")
-    print(f"R² Score: {r2:.4f}")
+    print(f"R² Score: {r2:.8f}")
     
     # The model should achieve reasonable performance
     assert r2 > 0.8, f"R² score too low: {r2}"
@@ -153,17 +153,19 @@ def test_gam_constraints():
     print(f"Mean Squared Error with constraints: {mse:.4f}")
     print(f"R² Score with constraints: {r2:.4f}")
 
-    gam.show(figsize=(5,10), layout=(3,1), xlim=[(-1,1),(0,1),(-30,0)], title='Before constraints')
+    gam.show(data = X_test,figsize=(12,3), layout=(1,3), xlim
+             =[(-1,10),(-13,-7),(-15,15)], title='Before constraints')
         # x1 should be increasing
-    gam.add_constraint(-1, 1, 'd', 'x1')
+    gam.add_constraint(-1, 0, 'd', 'x1')
     
     # x2 should be convex
-    gam.add_constraint(0, 1, 'c', 'x2')
+    gam.add_constraint(-10, -7, 'c', 'x2')
     
     # x3 should be decreasing in the negative range
     gam.add_constraint(-30, 0, 'd', 'x3')
     gam.update(X_train, y_train)
-    gam.show(figsize=(5,10), layout=(3,1), xlim=[(-1,1),(0,1),(-30,0)], title='After constraints')
+    gam.show(data= X_test, figsize=(12,3), layout=(1,3), 
+             xlim=[(-1,10),(-13,-7),(-15,15)], title='After constraints')
     
 
 
@@ -205,13 +207,14 @@ def test_gam_constraints():
 X, y = generate_synthetic_data(n_samples=1000, noise_level=0.1)
 gam = test_pandas_basic(X,y)
 # gam = test_gam_constraints()
+
 train_size = int(0.8 * len(X))
 X_train, X_test = X[:train_size], X[train_size:]
 y_train, y_test = y[:train_size], y[train_size:]
-# gam._prepare_viz_data(X_test, intercept=False, ci=True, alpha=0.05)
-# gam.show(data = X_test,mode='interactive',
-#          intercept=False, waterfall_height='80vh', ci = True)
-# gam._viz_waterfall
-gam.show(data = X_test, mode='static')
+# # gam._prepare_viz_data(X_test, intercept=False, ci=True, alpha=0.05)
+gam.show(data = X_test,mode='interactive',
+         index = 0, intercept=False, waterfall_height='80vh', ci = False)
+# # gam._viz_waterfall
+# # gam.show(data = X_test, mode='static',figsize=(5,3))
 
 

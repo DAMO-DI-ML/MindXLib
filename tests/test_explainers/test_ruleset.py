@@ -47,7 +47,7 @@ def test_ruleset_from_csv():
     data = pd.read_csv('dataset/tic_tac_toe.csv', header=None)
     y = data.iloc[:,-1]
     print(y.value_counts())
-    y = y.map({'negative': 0, 'positive': 1})
+    # y = y.map({'negative': 0, 'positive': 1})
     X = data.iloc[:,:-1]
     explainer = RuleSet(
         max_num_rules=15, 
@@ -135,5 +135,5 @@ def test_rulelist_multiclass_with_pandas():
     train_acc_default = np.mean(train_predictions_default == y)
     print(f'Training accuracy with default label=1: {train_acc_default:.2f}')
 
-test_rulelset_with_numpy()
+# test_rulelset_with_numpy()
 test_ruleset_from_csv()

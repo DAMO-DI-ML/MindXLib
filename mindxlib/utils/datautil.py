@@ -86,8 +86,9 @@ def process_input_data(X: Union[pd.DataFrame, np.ndarray],
         label_column = label_column[0]
         y_processed = y
     elif isinstance(y, pd.Series):
-        label_column = y.name
+        label_column = y.name if y.name is not None else 'label'
         y_processed = y.to_frame()
+        y_processed.columns = [label_column]
     else:
         raise ValueError('y must be DataFrame, Series or ndarray')
 
