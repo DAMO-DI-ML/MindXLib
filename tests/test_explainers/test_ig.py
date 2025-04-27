@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from mindxlib.explainers.common_library_attribution.ig import IntegratedGradients
+from mindxlib import IntegratedGradients
 
 class test_model():
     def __init__(self):

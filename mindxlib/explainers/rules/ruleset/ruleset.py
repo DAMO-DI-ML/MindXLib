@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import re
 from mindxlib.base.explainer import RuleExplainer
-from mindxlib.base.explanation import RuleExplanation
+from mindxlib.base.explanation import RuleSetExplanation
 from mindxlib.utils.datautil import process_input_data
 from mindxlib.utils.features import FeatureBinarizer
 from sklearn.base import BaseEstimator
@@ -39,23 +39,6 @@ def get_binary_path():
 
 binpath = get_binary_path()
 # binpath = os.path.dirname(os.path.abspath(__file__)) + '/bin/f1rule-darwin-aarch64'
-
-
-class RulesetExplanation(RuleExplanation):
-    def show(self):
-        """Override show method to print rules in custom format."""
-        N = len(self.rules)
-        if N > 0:
-            # 输出第一个规则
-            print(f"IF {self.rules[0]}, THEN 1")
-            # 输出其余的规则
-            for ii in range(1, N):
-                print(f"ELIF {self.rules[ii]}, THEN 1")
-            # 输出默认规则
-            print(f"ELSE 0")
-        else:
-            # 如果没有规则，仅输出默认规则
-            print(f"IF THEN {self.default_rule}")
 
 
 class RuleSet(RuleExplainer):
@@ -85,6 +68,8 @@ class RuleSet(RuleExplainer):
         self.feature_binarizer = None
         self.num_thresh = num_thresh
         self.negation = negation
+        self.label_map = None
+        self.reverse_label_map = None
 
         if binarize_features:
             self.feature_binarizer = FeatureBinarizer(
@@ -92,6 +77,31 @@ class RuleSet(RuleExplainer):
                 num_thresh=num_thresh,
                 negation=negation
             )
+
+    def _map_labels(self, y):
+        """Map labels to 0/1 and store mapping"""
+        # Convert y to numpy array first to handle different input types
+        if isinstance(y, pd.DataFrame):
+            y_values = y.iloc[:,0].values
+        elif isinstance(y, pd.Series):
+            y_values = y.values
+        else:
+            y_values = np.array(y)
+            
+        unique_labels = np.unique(y_values)
+        if len(unique_labels) != 2:
+            raise ValueError("Only binary classification is supported")
+            
+        # Create label mapping if not exists
+        if self.label_map is None:
+            self.label_map = {label: i for i, label in enumerate(unique_labels)}
+            self.reverse_label_map = {i: label for label, i in self.label_map.items()}
+            
+        # Map the values using numpy where for efficiency
+        mapped_values = np.array([self.label_map[val] for val in y_values])
+        
+        # Return as Series to maintain pandas interface
+        return pd.Series(mapped_values)
 
     def fit(self, X, y, default_label=None):
         """Learn a rule set from data
@@ -102,24 +112,34 @@ class RuleSet(RuleExplainer):
             default_label: Optional name for default rule (uses most frequent class if None)
             
         Returns:
-            RuleExplanation object containing the learned rules
+            RuleSetExplanation object containing the learned rules
         """       
-        
+        # Map labels to 0/1
+        label_counts = y.value_counts()
+        y = self._map_labels(y)
 
         X, y, feature_columns, label_column = self._process_input_data(X, y, is_fit=True)
 
         dataset = pd.concat((X, y), axis=1)
-        # breakpoint()
         self.feature_columns_ = feature_columns
 
         # Get default rule name
-        label_counts = dataset[label_column].value_counts()
         if default_label is None:
-            default_label = label_counts.idxmax()
-            print(f"Using default rule name: {default_label} (most frequent class in data)")
+            # convert the name of label_counts to 0/1 via map
+            default_label_str = label_counts.idxmax()
+            # Handle case where idxmax returns a tuple
+            if isinstance(default_label_str, tuple):
+                default_label_str = default_label_str[0]
+            default_label = self.label_map[default_label_str]
+            print(f"Using default rule name: {default_label_str} (most frequent class in data)")
         elif default_label not in list(label_counts.index):
             raise ValueError(f'default_label is not in the data: got {default_label}, expected one of {list(label_counts.index)}')
+        else:
+            default_label = self.label_map[default_label]
         self.default_label = default_label
+
+        # Store original default label before mapping
+        self.original_default_label = self.reverse_label_map[default_label]
 
         with tempfile.TemporaryFile(mode = "w+") as tmp:
             dataset.to_csv(tmp, index=False)
@@ -158,19 +178,27 @@ class RuleSet(RuleExplainer):
                 self.itemsets.append([])
             self.ruleset.append(ret[1])
 
-        self.rules = RulesetExplanation(rules=self.ruleset, default_rule=self.default_label)
+        # Create explanation with original labels and label mapping
+        self.rules = RuleSetExplanation(
+            rules=self.ruleset, 
+            default_rule=self.original_default_label,
+            label_map=self.reverse_label_map
+        )
 
     def predict(self, X: np.ndarray):
+        """Make predictions and map back to original labels"""
         X, _, feature_columns, _ = self._process_input_data(X)
         if len(self.ruleset) == 0:
-            return np.zeros(X.shape[0], dtype=int)
+            return np.full(X.shape[0], self.reverse_label_map[0])
+            
         predictions = [
             np.prod(X.to_numpy()[..., itemset], axis=-1)
             for itemset in self.itemsets
         ]
-        output = pd.DataFrame(np.greater(np.sum(predictions, axis=0), 0).astype(int))
-        return output if len(output.shape)==1 else output.iloc[:,0]
-
+        binary_preds = np.greater(np.sum(predictions, axis=0), 0).astype(int)
+        
+        # Map predictions back to original labels
+        return pd.Series(binary_preds).map(self.reverse_label_map)
 
     def _process_input_data(self, X, y=None, is_fit=False):
         """Process input data using utility function"""
