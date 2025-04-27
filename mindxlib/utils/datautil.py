@@ -73,12 +73,24 @@ def process_input_data(X: Union[pd.DataFrame, np.ndarray],
             feature_binarizer.fit(X)
         X = feature_binarizer.transform(X)
         X.columns = [''.join(col).strip() for col in X.columns.values]
+    else:
+        for col in X.columns:
+            values = X.loc[:,col].unique()
+            if len(values) > 2:
+                raise ValueError(f'Feature {col} has more than 2 unique values. Please use binarize_features=True to binarize the feature.')
+            else:
+                # map the two values to 1 and 0
+                X.loc[:,col] = X.loc[:,col].map({values[0]: 1, values[1]: 0}).astype(int)
+
+                X.rename(columns={col: f'{col}=={values[0]}'}, inplace=True)
+                
+                
 
     feature_columns = list(X.columns)
 
     if y is None:
         label_column = None
-        y_processed = None
+        y_processed = None 
     elif isinstance(y, pd.DataFrame):
         label_column = list(y.columns)
         if len(label_column) > 1:
