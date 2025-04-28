@@ -205,7 +205,6 @@ import numpy as np
 credit_data = fetch_ucirepo(id=27)
 X = credit_data.data.features 
 y = credit_data.data.targets
-y = y.replace({'-': 0, '+': 1})
 
 # 数据预处理和模型训练
 X.dropna(axis=1, inplace=True)
@@ -594,3 +593,12 @@ explanation_waterfall.show('waterfall', index=2, class_index=1)
 - **baseline**: 用于计算SHAP值的背景数据，在"match"模式下需要与待解释样本一一对应，在"origin"模式下可以使用任意数量的样本。
 
 这种统一的参数设计使得用户可以更方便地在不同类型的模型间切换，同时保持解释方法的一致性。
+
+## 结语
+
+目前MindXLib已在集团内部开放使用，支持多种业务场景，包括风控、预测、运维等核心领域。未来我们将持续优化算法性能，扩展更多解释方法，并提供更多场景化的解决方案。欢迎关注和使用MindXLib，如有任何问题或建议，欢迎通过内网联系我们。
+
+本文作者：顾心悦（范钦）
+开发：顾心悦（范钦）、杨敏（倚天）、彭子恒（卑尔）、杨林晓（清律）、杨经邦（酒七）、杨帆（朝忆）、都红霞（绛冰）
+技术支持：杨林晓（清律）、孙亮（图宇）
+鸣谢帮助：潘军秋（秋翌）
