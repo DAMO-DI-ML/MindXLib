@@ -10,7 +10,7 @@ You can install MindXLib using pip:
 
 ~~pip install mindxlib~~
 ```bash
-pip install git+http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git@develop-2025
+pip install git+http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git
 ```
 
 Or install from source:
@@ -18,7 +18,6 @@ Or install from source:
 ```bash
 git clone http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git
 cd mindxlib
-git checkout develop-2025  # Switch to development branch
 pip install -e .
 ```
 

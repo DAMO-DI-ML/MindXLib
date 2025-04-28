@@ -8,7 +8,7 @@ MindXLib是达摩院决策智能实验室数据决策团队在XAI(Explainable AI
 
 ~~pip install mindxlib~~
 ```bash
-pip install git+http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git@develop-2025
+pip install git+http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git
 ```
 
 或从源代码安装：
@@ -16,7 +16,6 @@ pip install git+http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git@develop-2025
 ```bash
 git clone http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git
 cd mindxlib
-git checkout develop-2025  # 切换到开发分支
 pip install -e .
 ```
 
