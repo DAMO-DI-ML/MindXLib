@@ -11,7 +11,7 @@ def plot_waterfall(explanation, index = 0, class_index = 0, **kwargs):
     values, _ = validate_shap_values(explanation.shap_explanation, class_index)
     waterfall(values[index], **kwargs)
 
-def plot_scatter(explanation, class_index=0, feature=None, **kwargs):
+def plot_scatter(explanation, save = False,class_index=0, feature=None, **kwargs):
     values, _ = validate_shap_values(explanation.shap_explanation, class_index)
     
     if feature is not None:
@@ -19,12 +19,12 @@ def plot_scatter(explanation, class_index=0, feature=None, **kwargs):
         if isinstance(feature, str):
             # Convert feature name to index if needed
             feature_idx = explanation.shap_explanation.feature_names.index(feature)
-            scatter(values[:, feature_idx], values[:, feature_idx], **kwargs)
+            scatter(values[:, feature_idx], values[:, feature_idx], show = not save,**kwargs)
         else:
-            scatter(values[:, feature], explanation.data[:, feature], **kwargs)
+            scatter(values[:, feature], explanation.data[:, feature], show = not save, **kwargs)
     else:
         # Plot all features
-        scatter(values, **kwargs)
+        scatter(values, show = not save, **kwargs)
 
 def plot_static_gam(model, feature_indices=None, figsize=(12, 10), display=True, 
              title=None, xlabel=None, ylabel="Attribution", show_density=True, 

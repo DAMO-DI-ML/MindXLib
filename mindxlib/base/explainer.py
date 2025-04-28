@@ -124,10 +124,10 @@ class RuleExplainer(ExplainerBase):
                 raise ValueError(f'X and y must be same type - got X: {type(X).__name__}, y: {type(y).__name__}')
         return X, y
         
-    def show(self):
+    def show(self, save=False, path=None):
         """Display learned rules"""
         if hasattr(self, 'rules'):
-            self.rules.show()
+            self.rules.show(save=save, path=path)
         else:
             raise ValueError("Must call fit() before show()")
 

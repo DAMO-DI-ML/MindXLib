@@ -40,16 +40,37 @@ class RuleExplanation(Explanation):
     def validate(self):
         pass
         
-    def show(self):
-        """Print rules in human-readable format."""
+    def show(self, save: bool = False, path: Optional[str] = None):
+        """Print rules in human-readable format.
+        
+        Args:
+            save: Whether to save the output to a file
+            path: Path to save the output file. Required if save=True
+        """
+        output_lines = []
         N = len(self.rules)
         if N > 0:
-            print('IF '+' AND '.join(sorted(self.rules[0]['condition']))+', THEN '+str(self.rules[0]['label_name']))
+            line = 'IF '+' AND '.join(sorted(self.rules[0]['condition']))+', THEN '+str(self.rules[0]['label_name'])
+            output_lines.append(line)
+            print(line)
             for ii in range(1,N):
-                print('ELIF '+' AND '.join(sorted(self.rules[ii]['condition']))+', THEN '+str(self.rules[ii]['label_name']))
-            print('ELSE '+str(self.default_rule))
+                line = 'ELIF '+' AND '.join(sorted(self.rules[ii]['condition']))+', THEN '+str(self.rules[ii]['label_name'])
+                output_lines.append(line)
+                print(line)
+            line = 'ELSE '+str(self.default_rule)
+            output_lines.append(line)
+            print(line)
         else:
-            print('No rules found, default rule: '+str(self.default_rule))
+            line = 'No rules found, default rule: '+str(self.default_rule)
+            output_lines.append(line)
+            print(line)
+            
+        if save:
+            if path is None:
+                raise ValueError("path must be provided when save=True")
+            with open(path, 'w') as f:
+                f.write('\n'.join(output_lines))
+            print(f"Rules saved to {path}")
 
 
 class RuleSetExplanation(RuleExplanation):
@@ -67,8 +88,14 @@ class RuleSetExplanation(RuleExplanation):
         super().__init__(rules, default_rule)
         self.label_map = label_map
 
-    def show(self):
-        """Print rules in independent IF-THEN format."""
+    def show(self, save=False, path=None):
+        """Print rules in independent IF-THEN format.
+        
+        Args:
+            save: Whether to save the output to a file
+            path: Path to save the output file. Required if save=True
+        """
+        output_lines = []
         N = len(self.rules)
         if N > 0:
             for rule in self.rules:
@@ -81,11 +108,24 @@ class RuleSetExplanation(RuleExplanation):
                     else:
                         then_label = 1
                         else_label = 0
-                    print(f"IF {rule}, THEN {then_label}, ELSE {else_label}")
+                    line = f"IF {rule}, THEN {then_label}, ELSE {else_label}"
+                    output_lines.append(line)
+                    print(line)
                 else:
-                    print(f"IF {' AND '.join(sorted(rule['condition']))}, THEN {rule['label_name']}")
+                    line = f"IF {' AND '.join(sorted(rule['condition']))}, THEN {rule['label_name']}"
+                    output_lines.append(line)
+                    print(line)
         else:
-            print(f"No rules found, default rule: {self.default_rule}")
+            line = f"No rules found, default rule: {self.default_rule}"
+            output_lines.append(line)
+            print(line)
+            
+        if save:
+            if path is None:
+                raise ValueError("path must be provided when save=True")
+            with open(path, 'w') as f:
+                f.write('\n'.join(output_lines))
+            print(f"Rules saved to {path}")
 
 class FeatureImportanceExplanation(Explanation):
     """Class for feature importance explanations."""

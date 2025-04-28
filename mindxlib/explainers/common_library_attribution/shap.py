@@ -5,6 +5,7 @@ from mindxlib.base.explanation import FeatureImportanceExplanation
 from mindxlib.base.explainer import FeatureImportanceExplainer
 from mindxlib.visualization.plots import plot_waterfall, plot_bar, plot_scatter
 import pandas as pd
+import matplotlib.pyplot as plt
 #TODO: _compute_attributions return shap Explanation classes. 
 # then _get_attribution forms the attribution into FeatureImportanceExplantion 
 # show() write all types of plots from shap classes
@@ -177,19 +178,27 @@ class shapExplanation(FeatureImportanceExplanation):
     def __init__(self, data, feature_importance, shap_explanation):
         super().__init__(data, feature_importance)
         self.shap_explanation = shap_explanation
-    def show(self, type='waterfall', **kwargs):
+    def show(self, type='waterfall', save=False, path=None, **kwargs):
         """
         Show the SHAP explanation visualization
         
         Args:
-            type (str): Type of visualization ('waterfall', etc.)
+            type (str): Type of visualization ('waterfall', 'bar', 'scatter')
+            save (bool): Whether to save the figure to a file
+            path (str): Path to save the figure. Required if save=True
             **kwargs: Additional arguments passed to the plotting function
         """
         if type == 'waterfall':
-            plot_waterfall(self, **kwargs)
+            plot_waterfall(self, save, **kwargs)
         elif type == 'bar':
-            plot_bar(self, **kwargs)
+            plot_bar(self, save, **kwargs)
         elif type == 'scatter':
-            plot_scatter(self, **kwargs)
+            plot_scatter(self, save, **kwargs)
         else:
-            raise ValueError(f"type must be 'waterfall' or 'bar'")
+            raise ValueError(f"type must be 'waterfall', 'bar', or 'scatter'")
+            
+        if save:
+            if path is None:
+                raise ValueError("path must be provided when save=True")
+            plt.savefig(path)
+            print(f"Figure saved to {path}")

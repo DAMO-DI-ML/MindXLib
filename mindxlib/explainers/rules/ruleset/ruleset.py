@@ -119,7 +119,6 @@ class RuleSet(RuleExplainer):
         y = self._map_labels(y)
 
         X, y, feature_columns, label_column = self._process_input_data(X, y, is_fit=True)
-
         dataset = pd.concat((X, y), axis=1)
         self.feature_columns_ = feature_columns
 

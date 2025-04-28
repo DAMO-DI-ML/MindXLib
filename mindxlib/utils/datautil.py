@@ -72,7 +72,11 @@ def process_input_data(X: Union[pd.DataFrame, np.ndarray],
         if is_fit:
             feature_binarizer.fit(X)
         X = feature_binarizer.transform(X)
-        X.columns = [''.join(col).strip() for col in X.columns.values]
+        X.columns = [
+            f"NOT {col[0]}" if len(col) == 3 and col[1].lower() == 'not'
+            else ' '.join(p for p in col if p).strip()
+            for col in X.columns.values
+        ]
     else:
         for col in X.columns:
             values = X.loc[:,col].unique()
@@ -97,13 +101,14 @@ def process_input_data(X: Union[pd.DataFrame, np.ndarray],
             warnings.warn(f'Multiple label columns found ({len(label_column)} columns). Using first column.')
         label_column = label_column[0]
         y_processed = y
+        y_processed.index = X.index
     elif isinstance(y, pd.Series):
         label_column = y.name if y.name is not None else 'label'
         y_processed = y.to_frame()
         y_processed.columns = [label_column]
+        y_processed.index = X.index
     else:
         raise ValueError('y must be DataFrame, Series or ndarray')
-
     return X, y_processed, feature_columns, label_column
 
 def validate_shap_values(shap_values, class_index):

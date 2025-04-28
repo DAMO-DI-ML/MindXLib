@@ -58,7 +58,7 @@ def test_adult_scatter():
     model = xgboost.XGBClassifier().fit(X, y)
     explainer = ShapExplainer(model, method = 'tree')
     explanation = explainer.explain(X[:1000], baseline=X, mode="origin")
-    explanation.show('scatter', feature='Age')
+    explanation.show('scatter', feature='Age', save=True, path='./scatter_test.png')
 
 def test_official_tree_shap():
     import xgboost
