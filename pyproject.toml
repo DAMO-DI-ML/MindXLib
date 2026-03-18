@@ -35,7 +35,7 @@ dependencies = [
     "dash_bootstrap_components>=1.0.0", 
     "lime>=0.2.0",
     "matplotlib>=3.0",
-    "mip>=1.14.0",
+    "pulp>=2.7.0",
     "mlxtend==0.23.4",
     "numba",
     "numpy>=1.20.0",

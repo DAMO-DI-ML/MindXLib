@@ -6,7 +6,8 @@ from pyroaring import BitMap
 import numpy as np
 import time
 import ast
-from mip import Model, xsum, minimize, BINARY, CONTINUOUS, Constr, Column, MINIMIZE
+import pulp
+from pulp import LpProblem, LpMinimize, LpVariable, LpContinuous, lpSum
 from sklearn.metrics import balanced_accuracy_score, accuracy_score
 from mindxlib.base.explainer import RuleExplainer
 from mindxlib.base.explanation import RuleExplanation
@@ -1539,12 +1540,41 @@ class cl_fptree:
             node_info[comp_name] = node_info[comp_name].intersection(comp_add)
 
 
+# Wrapper class to provide mip-compatible interface for pulp model
+class PulpModelWrapper:
+    def __init__(self, problem, y_vars, x_vars, constraints, n_pos):
+        self.problem = problem
+        self.y_vars = y_vars
+        self.x_vars = x_vars
+        self.constraints = constraints
+        self.n_pos = n_pos
+        self._vars_list = list(y_vars) + list(x_vars)
+    
+    @property
+    def vars(self):
+        return self._vars_list
+    
+    @property
+    def objective_value(self):
+        return pulp.value(self.problem.objective)
+    
+    def get_dual_values(self):
+        dual_values = []
+        for i in range(self.n_pos):
+            constr_name = f'constr_{i}'
+            if constr_name in self.constraints:
+                dual_val = self.constraints[constr_name].pi
+                dual_values.append(dual_val if dual_val is not None else 0.0)
+            else:
+                dual_values.append(0.0)
+        return np.array(dual_values)
+
+
 # main optimization function
 def solve_mip(model, new_vars, relax_ind, pos_beta, overlap_beta, write_model):
     start_time = time.time()
     update_rules = col_list + new_vars
     cl_res_pos = copy.deepcopy(update_rules)
-    # cl_res_pos = copy.deepcopy(new_vars)
     logging.info('MIP tot rule vars {}'.format(len(cl_res_pos)))
 
     n_pos = len(full_bit_dict['tot_pos_bit'])
@@ -1552,79 +1582,104 @@ def solve_mip(model, new_vars, relax_ind, pos_beta, overlap_beta, write_model):
 
     # dual var constraint index
     mu_index = list(np.array(range(n_pos)))
-    # lambda_index = [n_pos]
 
-    m = Model()
-    m.clear()
-    # add y var repr miss pos data
-    y = [m.add_var(name='y' + str(i), var_type=CONTINUOUS, lb=0, obj=pos_beta + overlap_beta) for i in range(n_pos)]
-    # v = [m.add_var(name='v'+str(i), var_type=CONTINUOUS, lb=0, obj=overlap_beta) for i in range(n_pos)]
-    for i in range(n_pos):
-        # m += y[i] - v[i] == 1
-        m += y[i] >= 1
-
-    # add vars column-wise
-    constrs_ = [[m.constrs[j] for j in cl_res_pos[i]['pos_bit']] for i in range(nx)]
-    coeffs_ = [np.ones(len(cl_res_pos[i]['pos_bit'])) for i in range(nx)]
+    # Create pulp model
+    m = LpProblem("RuleSetOptimization", LpMinimize)
+    
+    # add y var repr miss pos data (continuous, lb=0)
+    y = [LpVariable(name='y' + str(i), lowBound=0, cat=LpContinuous) for i in range(n_pos)]
+    
+    # add x vars for rules
     objs_ = []
     for i in range(nx):
         objs_i = cl_res_pos[i]['pos_rule_coef'] * overlap_beta + cl_res_pos[i]['neg_rule_coef'] + rule_cost_coef * \
                  cl_res_pos[i]['pat_len']
         objs_i += cl_res_pos[i]['overlap_cover_coef'] * overlap_beta
         objs_.append(objs_i)
-    prev_add_new_num = 0
-    # prev_add_new_num = len(m.vars) - n_pos
-    x = [m.add_var(name='x' + str(prev_add_new_num + i), var_type=CONTINUOUS, lb=0, obj=objs_[i],
-                   column=Column(constrs=constrs_[i], coeffs=coeffs_[i])) for i in range(nx)]
-    # for i in range(nx):
-    #     logging.debug('add var {} with info {}'.format('x'+str(prev_add_new_num+i), cl_res_pos[i]))
+    
+    x = [LpVariable(name='x' + str(i), lowBound=0, cat=LpContinuous) for i in range(nx)]
+    
+    # Set objective function
+    objective = lpSum([(pos_beta + overlap_beta) * y[i] for i in range(n_pos)]) + \
+                lpSum([objs_[i] * x[i] for i in range(nx)])
+    m += objective
+    
+    # Add constraints: y[i] + sum(x[j] for j where i in pos_bit[j]) >= 1
+    constraints = {}
+    for i in range(n_pos):
+        constr_expr = y[i]
+        for j in range(nx):
+            if i in cl_res_pos[j]['pos_bit']:
+                constr_expr += x[j]
+        constr_name = f'constr_{i}'
+        constraints[constr_name] = (constr_expr >= 1, constr_name)
+        m += constr_expr >= 1, constr_name
 
     construct_time = time.time() - start_time
 
-    m.verbose = False
     start = time.time()
-
-    # m.lp_method = 1
-    # print('method {}'.format(m.lp_method))
-    m.optimize(max_seconds=60, relax=relax_ind)
+    
+    # Solve the problem
+    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=60)
+    m.solve(solver)
+    
     mip_time = time.time() - start
     logging.debug('is relax? {}'.format(relax_ind))
-    mu_array = np.array([Constr(m, i).pi for i in mu_index]).copy()
+    
+    # Get dual values (shadow prices) - pulp provides these after solving
+    mu_array = np.zeros(n_pos)
+    for i in range(n_pos):
+        constr_name = f'constr_{i}'
+        for name, constraint in m.constraints.items():
+            if name == constr_name:
+                mu_array[i] = constraint.pi if constraint.pi is not None else 0.0
+                break
 
     iteration[0] += 1
     if write_model:
-        m.write('model/model' + str(iteration[0]) + '.lp')
-        m.write('model/model' + str(iteration[0]) + '.sol')
+        m.writeLP('model/model' + str(iteration[0]) + '.lp')
 
-    tot_var = len(m.vars)
-    # new_tot = col_var+[i['pattern'] for i in new_vars]
-    # print(tot_var, len(new_tot))
-    mutiplier = 1
+    # Get variable values
+    y_values = [y[i].varValue if y[i].varValue is not None else 0.0 for i in range(n_pos)]
+    x_values = [x[i].varValue if x[i].varValue is not None else 0.0 for i in range(nx)]
+    
+    tot_var = n_pos + nx
+    multiplier = 1
+    
     if relax_ind:
-        good_list = [(i, m.vars[i].x) for i in range(tot_var) if m.vars[i].x > 0 and i >= mutiplier * n_pos]
+        good_list = [(n_pos + i, x_values[i]) for i in range(nx) if x_values[i] > 0]
     else:
-        good_list = [(i, m.vars[i].x) for i in range(tot_var) if m.vars[i].x == 1 and i >= mutiplier * n_pos]
-        logging.debug([m.vars[i].x for i in range(tot_var)])
-        logging.debug([(i, col_var[i]) for i in range(tot_var) if m.vars[i].x == 1 and i >= mutiplier * n_pos])
-    # print(good_list)
-    short_rule = [col_var[i[0] - mutiplier * n_pos] for i in good_list]
-    # print(short_rule)
+        good_list = [(n_pos + i, x_values[i]) for i in range(nx) if x_values[i] == 1]
+        logging.debug(y_values + x_values)
+        logging.debug([(n_pos + i, col_var[i]) for i in range(nx) if x_values[i] == 1])
+    
+    short_rule = [col_var[i[0] - multiplier * n_pos] for i in good_list]
 
-    logging.debug('this many constrs {}'.format(len(m.constrs)))
-    basic_list = [(i, m.vars[i].x) for i in range(tot_var) if m.vars[i].x > 0]
+    logging.debug('this many constrs {}'.format(len(m.constraints)))
+    basic_list = [(i, y_values[i]) for i in range(n_pos) if y_values[i] > 0] + \
+                 [(n_pos + i, x_values[i]) for i in range(nx) if x_values[i] > 0]
     logging.debug('this many feasible basic solutions {}'.format(len(basic_list)))
 
-    # lambda_array = np.array([Constr(m, i).pi for i in lambda_index])
-    # lambda_array = [0.0]
     logging.debug('min mu array is {}'.format(min(mu_array)))
-    # logging.info(lambda_array)
-    # logging.info('ny {} nx {}'.format(ny, nx))
-    # logging.info('obj value is {}'.format(m.objective))
-    logging.info('obj value is {}'.format(m.objective_value))
+    logging.info('obj value is {}'.format(pulp.value(m.objective)))
+
+    # Create wrapper for compatibility
+    all_vars = []
+    for i in range(n_pos):
+        var_wrapper = type('VarWrapper', (), {'x': y_values[i]})()
+        all_vars.append(var_wrapper)
+    for i in range(nx):
+        var_wrapper = type('VarWrapper', (), {'x': x_values[i]})()
+        all_vars.append(var_wrapper)
+    
+    m_wrapper = type('ModelWrapper', (), {
+        'vars': all_vars,
+        'objective_value': pulp.value(m.objective)
+    })()
 
     return {'short_rule': short_rule, 'mip_time': round(mip_time, 3),
-            'm_object': m, 'mu_array': mu_array, 'construct_time': construct_time,
-            'short_rule_index': [i[0] - mutiplier * n_pos for i in good_list]
+            'm_object': m_wrapper, 'mu_array': mu_array, 'construct_time': construct_time,
+            'short_rule_index': [i[0] - multiplier * n_pos for i in good_list]
             }
 
 
