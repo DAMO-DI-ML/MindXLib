@@ -3,6 +3,7 @@
 MindXLib is an open toolkit ensemble of algorithmic achievements in XAI (Explainable AI) from the Data Decision Team at Alibaba DAMO Academy's Decision Intelligence Lab.
 
 [中文文档](README_CN.md)
+[介绍文章](blog.md)
 
 ## Installation
 
