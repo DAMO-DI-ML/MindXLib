@@ -9,18 +9,7 @@ MindXLib is an open toolkit ensemble of algorithmic achievements in XAI (Explain
 
 You can install MindXLib using pip:
 
-~~pip install mindxlib~~
-```bash
-pip install git+http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git
-```
-
-Or install from source:
-
-```bash
-git clone http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git
-cd mindxlib
-pip install -e .
-```
+pip install mindxlib
 
 ## Quick Start
 

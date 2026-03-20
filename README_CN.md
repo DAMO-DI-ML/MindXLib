@@ -6,18 +6,7 @@ MindXLib是达摩院决策智能实验室数据决策团队在XAI(Explainable AI
 
 您可以使用pip安装MindXLib：
 
-~~pip install mindxlib~~
-```bash
-pip install git+http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git
-```
-
-或从源代码安装：
-
-```bash
-git clone http://gitlab.alibaba-inc.com/MindXAI/MindXLib.git
-cd mindxlib
-pip install -e .
-```
+pip install mindxlib
 
 ## 快速开始
 
